@@ -1,0 +1,78 @@
+# Pain-point filter phrases for Mode 1: Pain Point Scanner
+# Edit freely — this list is tuned constantly to improve signal quality.
+# All matches are case-insensitive. Partial matches count (substring).
+
+seeking_tool:
+  - "is there a tool"
+  - "is there an app"
+  - "does anyone know a"
+  - "is there software"
+  - "looking for a tool"
+  - "looking for an app"
+  - "recommend a tool"
+  - "recommend an app"
+  - "any good tools for"
+  - "any apps for"
+
+wishing:
+  - "i wish there was"
+  - "i wish there were"
+  - "i wish i could"
+  - "i wish someone would"
+  - "would love a tool"
+  - "would love if"
+  - "someone should build"
+  - "why isn't there"
+  - "why is there no"
+
+frustration:
+  - "frustrated with"
+  - "hate that"
+  - "so annoying"
+  - "drives me crazy"
+  - "can't stand"
+  - "sick of"
+  - "tired of"
+  - "fed up with"
+  - "it's ridiculous that"
+  - "why does it take"
+
+asking_how:
+  - "how do you handle"
+  - "how do you guys"
+  - "how do i"
+  - "how does everyone"
+  - "what's your workflow for"
+  - "what do you use for"
+  - "best way to"
+  - "easiest way to"
+
+willingness_to_pay:
+  - "willing to pay"
+  - "i'd pay for"
+  - "i would pay"
+  - "shut up and take my money"
+  - "take my money"
+  - "pay good money"
+  - "pay a lot for"
+
+alternatives:
+  - "alternative to"
+  - "looking for something like"
+  - "similar to"
+  - "replacement for"
+  - "instead of"
+  - "switch from"
+  - "migrate from"
+
+struggle:
+  - "biggest pain"
+  - "struggle with"
+  - "waste so much time"
+  - "takes forever"
+  - "pain point"
+  - "biggest challenge"
+  - "hardest part"
+  - "most difficult"
+  - "constantly dealing with"
+  - "keep running into"
