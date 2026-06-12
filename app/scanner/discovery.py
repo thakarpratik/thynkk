@@ -1,6 +1,7 @@
 """Subreddit discovery — find relevant subreddits for a niche keyword."""
 
-from app.scanner.source_provider import PublicJsonProvider, RawSubreddit, SourceProvider
+from app.scanner.source_provider import RawSubreddit, SourceProvider
+from app.scanner.providers.pullpush_provider import PullPushProvider
 
 
 def discover_subreddits(
@@ -13,7 +14,7 @@ def discover_subreddits(
     If keyword starts with 'r/' it is treated as a direct subreddit name.
     """
     if provider is None:
-        provider = PublicJsonProvider()
+        provider = PullPushProvider()
 
     if keyword.startswith("r/"):
         name = keyword[2:].strip("/")
@@ -25,7 +26,7 @@ def discover_subreddits(
 if __name__ == "__main__":
     import sys
 
-    keyword = sys.argv[1] if len(sys.argv) > 1 else "productivity"
+    keyword = sys.argv[1] if len(sys.argv) > 1 else "small business"
     print(f"Discovering subreddits for: {keyword}\n")
     subs = discover_subreddits(keyword)
     for s in subs:

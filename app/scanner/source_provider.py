@@ -63,7 +63,7 @@ class PublicJsonProvider(SourceProvider):
     """
 
     BASE = "https://www.reddit.com"
-    HEADERS = {"User-Agent": "thynkk/0.1 (market research tool; read-only)"}
+    HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"}
     _REQUEST_DELAY = 2.0  # seconds between requests — stay polite
 
     def __init__(self) -> None:

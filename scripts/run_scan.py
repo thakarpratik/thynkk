@@ -19,11 +19,11 @@ from app.scanner.analyze import analyze
 from app.scanner.discovery import discover_subreddits
 from app.scanner.harvest import get_engine, harvest
 from app.scanner.scoring import score_themes
-from app.scanner.source_provider import PublicJsonProvider
+from app.scanner.providers.pullpush_provider import PullPushProvider
 
 
 def run_scan(keyword: str, post_limit: int = 100) -> list[dict]:
-    provider = PublicJsonProvider()
+    provider = PullPushProvider()
     engine = get_engine()
 
     print(f"\n[1/4] Discovering subreddits for: {keyword}")

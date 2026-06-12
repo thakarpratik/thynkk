@@ -14,7 +14,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 from app.scanner.filters import matches_pain_point
-from app.scanner.source_provider import PublicJsonProvider, SourceProvider
+from app.scanner.source_provider import SourceProvider
+from app.scanner.providers.pullpush_provider import PullPushProvider
 
 load_dotenv()
 
@@ -119,7 +120,7 @@ def harvest(
 ) -> list[HarvestedPost]:
     """Fetch posts from a subreddit, cache in Postgres, return pain-point matches."""
     if provider is None:
-        provider = PublicJsonProvider()
+        provider = PullPushProvider()
 
     ensure_tables(engine)
 
