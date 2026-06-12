@@ -77,7 +77,7 @@ Keep this list in a config file, not hardcoded — it will be tuned constantly.
 ## Tech Stack
 
 - **Backend:** Python 3.11+, FastAPI
-- **Reddit access:** PRAW (free tier OAuth app — 100 queries/min). Register at reddit.com/prefs/apps
+- **Reddit access:** Public JSON endpoints (no credentials needed, read-only). PRAW via OAuth once Reddit approves the developer application. Abstract behind `SourceProvider` so the switch is seamless.
 - **AI:** Anthropic Claude API (claude-sonnet for clustering; haiku for cheap pre-classification)
 - **Database:** Supabase (Postgres + SQLAlchemy + Alembic for migrations)
 - **Queue/jobs:** Start with simple background tasks or cron; Celery + Redis only when needed
@@ -86,6 +86,14 @@ Keep this list in a config file, not hardcoded — it will be tuned constantly.
 - **Payments:** Stripe Checkout + customer portal
 - **Email:** Resend or Postmark for report-ready and digest emails
 - **Backend hosting:** Railway
+
+### Reddit API Status (as of June 2026)
+Reddit closed self-service API access in November 2025. OAuth credentials now require manual approval (2–4 week review). **Current approach: public JSON endpoints** — append `.json` to any Reddit URL, no credentials needed.
+- `https://www.reddit.com/r/smallbusiness/top.json?t=month&limit=100`
+- `https://www.reddit.com/search.json?q=bookkeeping`
+- Rate limit: ~10–60 req/min unauthenticated — cache aggressively
+- Commercial use: requires separate written approval from Reddit
+- Developer application submitted: pending approval
 
 ---
 

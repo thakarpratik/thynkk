@@ -16,17 +16,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.scanner.analyze import analyze
-from app.scanner.discovery import discover_subreddits, get_reddit_client
+from app.scanner.discovery import discover_subreddits
 from app.scanner.harvest import get_engine, harvest
 from app.scanner.scoring import score_themes
+from app.scanner.source_provider import PublicJsonProvider
 
 
 def run_scan(keyword: str, post_limit: int = 100) -> list[dict]:
-    reddit = get_reddit_client()
+    provider = PublicJsonProvider()
     engine = get_engine()
 
     print(f"\n[1/4] Discovering subreddits for: {keyword}")
-    subreddits = discover_subreddits(keyword, reddit=reddit, limit=5)
+    subreddits = discover_subreddits(keyword, provider=provider, limit=5)
 
     if not subreddits:
         print("No subreddits found.")
@@ -38,7 +39,7 @@ def run_scan(keyword: str, post_limit: int = 100) -> list[dict]:
     all_posts = []
     print(f"\n[2/4] Harvesting posts...")
     for sub in subreddits[:3]:  # Top 3 most relevant subreddits
-        posts = harvest(sub.name, reddit, engine, post_limit=post_limit // len(subreddits[:3]))
+        posts = harvest(sub.name, engine, provider=provider, post_limit=post_limit // len(subreddits[:3]))
         print(f"  r/{sub.name}: {len(posts)} pain-point posts matched")
         all_posts.extend(posts)
 
