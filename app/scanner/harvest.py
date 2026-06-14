@@ -35,7 +35,13 @@ class HarvestedPost:
 
 
 def get_engine() -> Engine:
-    return create_engine(os.environ["DATABASE_URL"])
+    return create_engine(
+        os.environ["DATABASE_URL"],
+        pool_pre_ping=True,        # test connection before use, reconnects if dead
+        pool_recycle=300,          # recycle connections every 5 min (Supabase kills idle ones)
+        pool_size=5,
+        max_overflow=2,
+    )
 
 
 def ensure_tables(engine: Engine) -> None:
@@ -129,52 +135,43 @@ def harvest(
 
     matched: list[HarvestedPost] = []
     seen: set[str] = set()
-    per_feed = post_limit // 3
 
-    feeds = [
-        ("hot", "month"),
-        ("new", "month"),
-        ("top", "month"),
-    ]
+    # Single feed — top posts give the richest signal and minimise API calls
+    posts = provider.fetch_posts(
+        subreddit_name, sort="top", time_filter="month", limit=post_limit
+    )
 
-    for sort, time_filter in feeds:
-        posts = provider.fetch_posts(
-            subreddit_name, sort=sort, time_filter=time_filter, limit=per_feed
+    for raw in posts:
+        if raw.reddit_id in seen:
+            continue
+        seen.add(raw.reddit_id)
+
+        full_text = f"{raw.title} {raw.body}"
+        is_match = matches_pain_point(full_text)
+
+        post = HarvestedPost(
+            reddit_id=raw.reddit_id,
+            subreddit=subreddit_name,
+            title=raw.title,
+            body=raw.body,
+            score=raw.score,
+            num_comments=raw.num_comments,
+            created_utc=raw.created_utc,
+            permalink=raw.permalink,
+            matched_filter=is_match,
+            top_comments=[],
         )
-        for raw in posts:
-            if raw.reddit_id in seen:
-                continue
-            seen.add(raw.reddit_id)
 
-            full_text = f"{raw.title} {raw.body}"
-            is_match = matches_pain_point(full_text)
+        if not _post_cached(engine, raw.reddit_id):
+            _save_post(engine, post)
 
-            top_comments: list[str] = []
-            if is_match:
-                try:
-                    comments = provider.fetch_comments(subreddit_name, raw.reddit_id, limit=5)
-                    top_comments = [c for c in comments if matches_pain_point(c)][:3]
-                except Exception:
-                    pass
+        if is_match:
+            matched.append(post)
 
-            post = HarvestedPost(
-                reddit_id=raw.reddit_id,
-                subreddit=subreddit_name,
-                title=raw.title,
-                body=raw.body,
-                score=raw.score,
-                num_comments=raw.num_comments,
-                created_utc=raw.created_utc,
-                permalink=raw.permalink,
-                matched_filter=is_match,
-                top_comments=top_comments,
-            )
-
-            if not _post_cached(engine, raw.reddit_id):
-                _save_post(engine, post)
-
-            if is_match:
-                matched.append(post)
+    # Fetch comments only for the top 5 matched posts — best effort, skip on timeout
+    for post in matched[:5]:
+        comments = provider.fetch_comments(subreddit_name, post.reddit_id, limit=5)
+        post.top_comments = [c for c in comments if matches_pain_point(c)][:3]
 
     return matched
 

@@ -30,6 +30,11 @@ class Theme(BaseModel):
     opportunity: str
     severity_score: int
     mention_count: int
+    verdict: str = "Unknown"
+    willingness_to_pay: str = "Unknown"
+    willingness_reason: str = ""
+    competition: str = ""
+    next_step: str = ""
     quotes: list[Quote]
 
 

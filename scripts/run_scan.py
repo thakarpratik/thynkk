@@ -19,11 +19,11 @@ from app.scanner.analyze import analyze
 from app.scanner.discovery import discover_subreddits
 from app.scanner.harvest import get_engine, harvest
 from app.scanner.scoring import score_themes
-from app.scanner.providers.pullpush_provider import PullPushProvider
+from app.scanner.providers.apify_provider import ApifyProvider
 
 
 def run_scan(keyword: str, post_limit: int = 100) -> list[dict]:
-    provider = PullPushProvider()
+    provider = ApifyProvider()
     engine = get_engine()
 
     print(f"\n[1/4] Discovering subreddits for: {keyword}")
@@ -34,7 +34,7 @@ def run_scan(keyword: str, post_limit: int = 100) -> list[dict]:
         return []
 
     for s in subreddits:
-        print(f"  → r/{s.name} ({s.subscribers:,} subscribers)")
+        print(f"  -> r/{s.name} ({s.subscribers:,} subscribers)")
 
     all_posts = []
     print(f"\n[2/4] Harvesting posts...")

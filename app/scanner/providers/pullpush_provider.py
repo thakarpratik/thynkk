@@ -22,7 +22,7 @@ class PullPushProvider(SourceProvider):
     _REQUEST_DELAY = 1.0  # polite pause between requests
 
     def __init__(self) -> None:
-        self._client = httpx.Client(headers=self.HEADERS, timeout=30)
+        self._client = httpx.Client(headers=self.HEADERS, timeout=60)
 
     def _get(self, url: str, params: dict | None = None) -> dict:
         time.sleep(self._REQUEST_DELAY)
@@ -101,20 +101,23 @@ class PullPushProvider(SourceProvider):
         return posts
 
     def fetch_comments(self, subreddit: str, post_id: str, limit: int = 5) -> list[str]:
-        """Fetch top comments for a post by post ID."""
-        params = {
-            "link_id": f"t3_{post_id}",
-            "size": min(limit * 3, 25),
-            "sort": "desc",
-            "sort_type": "score",
-        }
-        data = self._get(f"{self.BASE}/search/comment/", params=params)
-        comments = []
-        for c in data.get("data", [])[:limit]:
-            body = c.get("body", "")
-            if body and body != "[removed]" and body != "[deleted]" and len(body) > 20:
-                comments.append(body[:500])
-        return comments
+        """Fetch top comments for a post. Returns empty list on any error — best effort."""
+        try:
+            params = {
+                "link_id": f"t3_{post_id}",
+                "size": min(limit * 3, 25),
+                "sort": "desc",
+                "sort_type": "score",
+            }
+            data = self._get(f"{self.BASE}/search/comment/", params=params)
+            comments = []
+            for c in data.get("data", [])[:limit]:
+                body = c.get("body", "")
+                if body and body != "[removed]" and body != "[deleted]" and len(body) > 20:
+                    comments.append(body[:500])
+            return comments
+        except Exception:
+            return []
 
 
 if __name__ == "__main__":

@@ -68,6 +68,11 @@ def score_themes(
             "severity_score": theme.severity_score,
             "mention_count": theme.mention_count,
             "demand_score": score,
+            "verdict": theme.verdict,
+            "willingness_to_pay": theme.willingness_to_pay,
+            "willingness_reason": theme.willingness_reason,
+            "competition": theme.competition,
+            "next_step": theme.next_step,
             "quotes": [q.model_dump() for q in theme.quotes],
         })
 
