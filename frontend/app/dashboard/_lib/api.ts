@@ -86,3 +86,28 @@ export async function fetchReport(scanId: string): Promise<Report> {
     fromCache: data.from_cache ?? false,
   };
 }
+
+export interface TrendItemApi {
+  niche: string;
+  description: string;
+  growth: string;
+  growth_pct: number;
+  tag: "HOT" | "RISING" | "NEW";
+  posts: number;
+  subreddit: string;
+}
+
+export interface TrendsResponse {
+  niches: TrendItemApi[];
+  as_of: string;
+  window_days: number;
+  from_cache: boolean;
+}
+
+export async function fetchTrends(refresh = false): Promise<TrendsResponse> {
+  const url = `${BASE}/radar/trends${refresh ? "?refresh=true" : ""}`;
+  const res = await fetch(url);
+  if (res.status === 503) throw new Error("scanning");
+  if (!res.ok) throw new Error(`Failed to fetch trends: ${res.status}`);
+  return res.json();
+}

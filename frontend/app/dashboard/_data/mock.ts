@@ -142,12 +142,12 @@ export const MOCK_THEMES: Theme[] = [
 ];
 
 export const MOCK_TRENDS: TrendItem[] = [
-  { niche: "AI meeting tools", growth: "+340%", growthPct: 340, tag: "HOT", posts: 1240, subreddit: "r/productivity" },
-  { niche: "Solo founder ops", growth: "+180%", growthPct: 180, tag: "RISING", posts: 890, subreddit: "r/indiehackers" },
-  { niche: "B2B cold outreach automation", growth: "+95%", growthPct: 95, tag: "NEW", posts: 620, subreddit: "r/sales" },
-  { niche: "No-code app builders", growth: "+72%", growthPct: 72, tag: "RISING", posts: 540, subreddit: "r/nocode" },
-  { niche: "Micro SaaS acquisition", growth: "+64%", growthPct: 64, tag: "NEW", posts: 410, subreddit: "r/entrepreneur" },
-  { niche: "Fractional CTO services", growth: "+51%", growthPct: 51, tag: "RISING", posts: 320, subreddit: "r/startups" },
+  { niche: "AI meeting tools", description: "Founders racing to build or replace Otter/Fireflies with cheaper AI alternatives.", growth: "+340%", growthPct: 340, tag: "HOT", posts: 1240, subreddit: "r/productivity" },
+  { niche: "Solo founder ops", description: "One-person companies systematising their operations to punch above their weight.", growth: "+180%", growthPct: 180, tag: "RISING", posts: 890, subreddit: "r/indiehackers" },
+  { niche: "B2B cold outreach automation", description: "Sales teams looking for personalised outreach that doesn't feel like a template.", growth: "+95%", growthPct: 95, tag: "NEW", posts: 620, subreddit: "r/sales" },
+  { niche: "No-code app builders", description: "Non-technical founders comparing Bubble, Glide, and FlutterFlow for MVPs.", growth: "+72%", growthPct: 72, tag: "RISING", posts: 540, subreddit: "r/nocode" },
+  { niche: "Micro SaaS acquisition", description: "Buyers hunting for $1–50k ARR products on Acquire and Flippa.", growth: "+64%", growthPct: 64, tag: "NEW", posts: 410, subreddit: "r/entrepreneur" },
+  { niche: "Fractional CTO services", description: "Early-stage startups hiring part-time technical leadership instead of a full-time CTO.", growth: "+51%", growthPct: 51, tag: "RISING", posts: 320, subreddit: "r/startups" },
 ];
 
 export const MOCK_TREND_META: TrendRadarMeta = {

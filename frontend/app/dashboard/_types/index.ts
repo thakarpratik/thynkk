@@ -23,6 +23,7 @@ export interface Theme {
 
 export interface TrendItem {
   niche: string;
+  description: string;
   growth: string;
   growthPct: number;
   tag: "HOT" | "RISING" | "NEW";

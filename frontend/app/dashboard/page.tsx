@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import type { Mode, ScanStatus, Theme } from "./_types";
-import { FREE_LIMIT, MOCK_TRENDS, MOCK_TREND_META } from "./_data/mock";
-import { submitScan, pollStatus, fetchReport, type Report } from "./_lib/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Mode, ScanStatus, Theme, TrendItem, TrendRadarMeta } from "./_types";
+import { FREE_LIMIT } from "./_data/mock";
+import { submitScan, pollStatus, fetchReport, fetchTrends, type Report } from "./_lib/api";
 import { DashboardNav } from "./_components/DashboardNav";
 import { ModeToggle } from "./_components/ModeToggle";
 import { ScanInput } from "./_components/ScanInput";
@@ -19,6 +19,8 @@ import { TrendRadar } from "./_components/TrendRadar";
 const isPro = false;
 const POLL_INTERVAL_MS = 3000;
 
+type RadarStatus = "idle" | "loading" | "done" | "error" | "scanning";
+
 export default function Dashboard() {
   const [mode, setMode] = useState<Mode>("scanner");
   const [query, setQuery] = useState("");
@@ -31,6 +33,12 @@ export default function Dashboard() {
   const [sort, setSort] = useState<SortKey>("demand");
   const [filter, setFilter] = useState<FilterVerdict>("all");
   const [scanTime, setScanTime] = useState<Date | null>(null);
+
+  const [trends, setTrends] = useState<TrendItem[]>([]);
+  const [trendMeta, setTrendMeta] = useState<TrendRadarMeta | null>(null);
+  const [radarStatus, setRadarStatus] = useState<RadarStatus>("idle");
+  const [radarError, setRadarError] = useState("");
+  const radarLoaded = useRef(false);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -45,7 +53,6 @@ export default function Dashboard() {
     pollTimer.current = setTimeout(async () => {
       try {
         const s = await pollStatus(scanId);
-
         if (s.status === "done") {
           const report = await fetchReport(scanId);
           setThemes(report.themes);
@@ -64,6 +71,41 @@ export default function Dashboard() {
       }
     }, POLL_INTERVAL_MS);
   }, []);
+
+  const loadTrends = useCallback(async (refresh = false) => {
+    setRadarStatus("loading");
+    setRadarError("");
+    try {
+      const data = await fetchTrends(refresh);
+      setTrends(data.niches.map((n) => ({
+        niche: n.niche,
+        description: n.description,
+        growth: n.growth,
+        growthPct: n.growth_pct,
+        tag: n.tag,
+        posts: n.posts,
+        subreddit: n.subreddit,
+      })));
+      setTrendMeta({ asOf: new Date(data.as_of), windowDays: data.window_days });
+      setRadarStatus("done");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "scanning") {
+        setRadarStatus("scanning");
+      } else {
+        setRadarError(msg);
+        setRadarStatus("error");
+      }
+    }
+  }, []);
+
+  // Load trends once when radar tab is first opened
+  useEffect(() => {
+    if (mode === "radar" && !radarLoaded.current) {
+      radarLoaded.current = true;
+      loadTrends();
+    }
+  }, [mode, loadTrends]);
 
   const handleScan = async () => {
     if (!query.trim()) return;
@@ -98,8 +140,8 @@ export default function Dashboard() {
     setErrorMessage("");
   };
 
-  const trendLockedCount = isPro ? 0 : Math.max(0, MOCK_TRENDS.length - FREE_LIMIT);
   const lockedCount = isPro ? 0 : Math.max(0, themes.length - FREE_LIMIT);
+  const trendLockedCount = isPro ? 0 : Math.max(0, trends.length - FREE_LIMIT);
 
   const sortedFilteredThemes = [...themes]
     .filter((t) => filter === "all" || t.verdict === filter)
@@ -167,10 +209,13 @@ export default function Dashboard() {
 
         {mode === "radar" && (
           <TrendRadar
-            trends={MOCK_TRENDS}
-            meta={MOCK_TREND_META}
+            trends={trends}
+            meta={trendMeta}
+            radarStatus={radarStatus}
+            radarError={radarError}
             isPro={isPro}
             lockedCount={trendLockedCount}
+            onRefresh={() => loadTrends(true)}
           />
         )}
 

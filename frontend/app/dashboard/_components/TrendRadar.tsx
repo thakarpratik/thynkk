@@ -4,11 +4,16 @@ import { useState } from "react";
 import type { TrendItem, TrendRadarMeta } from "../_types";
 import { UpgradeStrip } from "./UpgradeStrip";
 
+type RadarStatus = "idle" | "loading" | "done" | "error" | "scanning";
+
 interface TrendRadarProps {
   trends: TrendItem[];
-  meta: TrendRadarMeta;
+  meta: TrendRadarMeta | null;
+  radarStatus: RadarStatus;
+  radarError: string;
   isPro: boolean;
   lockedCount: number;
+  onRefresh: () => void;
 }
 
 type TrendSort = "growth" | "posts";
@@ -44,17 +49,20 @@ function TrendRow({ trend, index, shallow, isPro }: {
 }) {
   return (
     <div className="bg-[#0E1223] border border-[#1E293B] hover:border-[#22C55E]/50 rounded-lg p-5 transition-colors">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-[#94A3B8]">#{index + 1}</span>
-          <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3 min-w-0">
+          <span className="font-mono text-xs text-[#94A3B8] pt-0.5 shrink-0">#{index + 1}</span>
+          <div className="min-w-0">
             <h3 className={`font-mono font-semibold text-sm ${shallow ? "text-[#94A3B8]" : "text-[#F8FAFC]"}`}>
               {trend.niche}
             </h3>
             {!shallow && (
-              <p className="text-xs text-[#94A3B8] mt-0.5">
-                {trend.subreddit} · {trend.posts.toLocaleString()} posts
-              </p>
+              <>
+                <p className="text-xs text-[#94A3B8] mt-0.5">{trend.subreddit} · {trend.posts.toLocaleString()} posts</p>
+                {trend.description && (
+                  <p className="text-xs text-[#475569] mt-1 leading-relaxed">{trend.description}</p>
+                )}
+              </>
             )}
             {shallow && (
               <p className="text-xs text-[#475569] mt-0.5 font-mono">Growth and signal locked</p>
@@ -63,7 +71,7 @@ function TrendRow({ trend, index, shallow, isPro }: {
         </div>
 
         <div
-          className="flex items-center gap-3"
+          className="flex items-center gap-3 shrink-0"
           style={!isPro ? BLURRED : undefined}
         >
           <span className="font-mono text-lg font-bold text-[#22C55E]">{trend.growth}</span>
@@ -76,15 +84,40 @@ function TrendRow({ trend, index, shallow, isPro }: {
   );
 }
 
-export function TrendRadar({ trends, meta, isPro, lockedCount }: TrendRadarProps) {
+function LoadingState() {
+  return (
+    <div className="space-y-3">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-5 animate-pulse">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-3 bg-[#1E293B] rounded" />
+              <div>
+                <div className="w-40 h-3.5 bg-[#1E293B] rounded mb-2" />
+                <div className="w-24 h-2.5 bg-[#1E293B] rounded" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-5 bg-[#1E293B] rounded" />
+              <div className="w-12 h-4 bg-[#1E293B] rounded" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, lockedCount, onRefresh }: TrendRadarProps) {
   const [sort, setSort] = useState<TrendSort>("growth");
 
   const sorted = [...trends].sort((a, b) =>
     sort === "growth" ? b.growthPct - a.growthPct : b.posts - a.posts
   );
 
-  const asOfLabel = formatAsOf(meta.asOf);
-  const isStale = Date.now() - meta.asOf.getTime() > 86400000 * 2;
+  const isLoading = radarStatus === "loading" || radarStatus === "scanning";
+  const isStale = meta ? Date.now() - meta.asOf.getTime() > 86400000 * 2 : false;
+  const asOfLabel = meta ? formatAsOf(meta.asOf) : null;
 
   return (
     <div>
@@ -92,54 +125,88 @@ export function TrendRadar({ trends, meta, isPro, lockedCount }: TrendRadarProps
         <div>
           <h2 className="font-mono font-bold text-lg">Trend Radar</h2>
           <p className="text-xs text-[#94A3B8] mt-0.5">
-            Niches gaining momentum on Reddit · {meta.windowDays}-day window
+            Niches gaining momentum on Reddit{meta ? ` · ${meta.windowDays}-day window` : ""}
           </p>
         </div>
-        <div className={`flex items-center gap-1.5 text-xs font-mono shrink-0 ${isStale ? "text-[#F59E0B]" : "text-[#22C55E]"}`}>
-          {isStale ? (
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          ) : (
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+        <div className="flex items-center gap-3 shrink-0">
+          {asOfLabel && (
+            <span className={`flex items-center gap-1.5 text-xs font-mono ${isStale ? "text-[#F59E0B]" : "text-[#22C55E]"}`}>
+              {isStale ? (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+              )}
+              {asOfLabel}
+            </span>
           )}
-          <span>Data as of {asOfLabel}</span>
+          {isLoading ? (
+            <span className="text-xs font-mono text-[#475569] animate-pulse">scanning…</span>
+          ) : (
+            <button
+              onClick={onRefresh}
+              className="text-xs font-mono text-[#475569] hover:text-[#94A3B8] border border-[#1E293B] hover:border-[#334155] px-2.5 py-1 rounded-md transition-all cursor-pointer"
+            >
+              Refresh
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Sort controls */}
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-[10px] font-mono text-[#475569] uppercase tracking-widest">Sort:</span>
-        {(["growth", "posts"] as TrendSort[]).map((opt) => (
-          <button
-            key={opt}
-            onClick={() => setSort(opt)}
-            className={`text-xs font-mono px-2.5 py-1 rounded-md border transition-all cursor-pointer capitalize ${
-              sort === opt
-                ? "border-[#22C55E] text-[#22C55E] bg-[#22C55E]/10"
-                : "border-[#1E293B] text-[#475569] hover:border-[#334155] hover:text-[#94A3B8]"
-            }`}
-          >
-            {opt === "growth" ? "Growth %" : "Post volume"}
-          </button>
-        ))}
-      </div>
+      {radarStatus === "error" && (
+        <div className="bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-lg p-4 mb-4">
+          <p className="text-sm text-[#EF4444] font-mono">{radarError || "Failed to load trends."}</p>
+          <button onClick={onRefresh} className="text-xs text-[#EF4444] underline mt-1 cursor-pointer">Retry</button>
+        </div>
+      )}
 
-      <div className="space-y-3">
-        {sorted.map((trend, i) => (
-          <TrendRow
-            key={trend.niche}
-            trend={trend}
-            index={i}
-            isPro={isPro}
-            shallow={!isPro && i >= 3}
-          />
-        ))}
-      </div>
+      {radarStatus === "scanning" && (
+        <div className="bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-lg p-4 mb-4">
+          <p className="text-sm text-[#F59E0B] font-mono">Trend scan in progress — check back in ~60 seconds.</p>
+        </div>
+      )}
 
-      {!isPro && lockedCount > 0 && (
-        <UpgradeStrip lockedCount={lockedCount} noun="trending niches" />
+      {/* Sort controls — only when we have data */}
+      {radarStatus === "done" && trends.length > 0 && (
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-[10px] font-mono text-[#475569] uppercase tracking-widest">Sort:</span>
+          {(["growth", "posts"] as TrendSort[]).map((opt) => (
+            <button
+              key={opt}
+              onClick={() => setSort(opt)}
+              className={`text-xs font-mono px-2.5 py-1 rounded-md border transition-all cursor-pointer ${
+                sort === opt
+                  ? "border-[#22C55E] text-[#22C55E] bg-[#22C55E]/10"
+                  : "border-[#1E293B] text-[#475569] hover:border-[#334155] hover:text-[#94A3B8]"
+              }`}
+            >
+              {opt === "growth" ? "Growth %" : "Post volume"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isLoading && <LoadingState />}
+
+      {radarStatus === "done" && (
+        <>
+          <div className="space-y-3">
+            {sorted.map((trend, i) => (
+              <TrendRow
+                key={trend.niche}
+                trend={trend}
+                index={i}
+                isPro={isPro}
+                shallow={!isPro && i >= 3}
+              />
+            ))}
+          </div>
+          {!isPro && lockedCount > 0 && (
+            <UpgradeStrip lockedCount={lockedCount} noun="trending niches" />
+          )}
+        </>
       )}
     </div>
   );
