@@ -1,4 +1,4 @@
-import type { Theme, TrendItem } from "../_types";
+import type { Theme, TrendItem, TrendRadarMeta } from "../_types";
 
 export const MOCK_THEMES: Theme[] = [
   {
@@ -142,12 +142,17 @@ export const MOCK_THEMES: Theme[] = [
 ];
 
 export const MOCK_TRENDS: TrendItem[] = [
-  { niche: "AI meeting tools", growth: "+340%", tag: "HOT", posts: 1240, subreddit: "r/productivity" },
-  { niche: "Solo founder ops", growth: "+180%", tag: "RISING", posts: 890, subreddit: "r/indiehackers" },
-  { niche: "B2B cold outreach automation", growth: "+95%", tag: "NEW", posts: 620, subreddit: "r/sales" },
-  { niche: "No-code app builders", growth: "+72%", tag: "RISING", posts: 540, subreddit: "r/nocode" },
-  { niche: "Micro SaaS acquisition", growth: "+64%", tag: "NEW", posts: 410, subreddit: "r/entrepreneur" },
-  { niche: "Fractional CTO services", growth: "+51%", tag: "RISING", posts: 320, subreddit: "r/startups" },
+  { niche: "AI meeting tools", growth: "+340%", growthPct: 340, tag: "HOT", posts: 1240, subreddit: "r/productivity" },
+  { niche: "Solo founder ops", growth: "+180%", growthPct: 180, tag: "RISING", posts: 890, subreddit: "r/indiehackers" },
+  { niche: "B2B cold outreach automation", growth: "+95%", growthPct: 95, tag: "NEW", posts: 620, subreddit: "r/sales" },
+  { niche: "No-code app builders", growth: "+72%", growthPct: 72, tag: "RISING", posts: 540, subreddit: "r/nocode" },
+  { niche: "Micro SaaS acquisition", growth: "+64%", growthPct: 64, tag: "NEW", posts: 410, subreddit: "r/entrepreneur" },
+  { niche: "Fractional CTO services", growth: "+51%", growthPct: 51, tag: "RISING", posts: 320, subreddit: "r/startups" },
 ];
+
+export const MOCK_TREND_META: TrendRadarMeta = {
+  asOf: new Date("2026-06-13T00:00:00Z"),
+  windowDays: 7,
+};
 
 export const FREE_LIMIT = 3;

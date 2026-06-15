@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import type { Mode, ScanStatus, Theme } from "./_types";
-import { FREE_LIMIT, MOCK_TRENDS } from "./_data/mock";
+import { FREE_LIMIT, MOCK_TRENDS, MOCK_TREND_META } from "./_data/mock";
 import { submitScan, pollStatus, fetchReport, type Report } from "./_lib/api";
 import { DashboardNav } from "./_components/DashboardNav";
 import { ModeToggle } from "./_components/ModeToggle";
@@ -168,6 +168,7 @@ export default function Dashboard() {
         {mode === "radar" && (
           <TrendRadar
             trends={MOCK_TRENDS}
+            meta={MOCK_TREND_META}
             isPro={isPro}
             lockedCount={trendLockedCount}
           />

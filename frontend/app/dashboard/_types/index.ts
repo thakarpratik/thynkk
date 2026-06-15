@@ -24,7 +24,13 @@ export interface Theme {
 export interface TrendItem {
   niche: string;
   growth: string;
+  growthPct: number;
   tag: "HOT" | "RISING" | "NEW";
   posts: number;
   subreddit: string;
+}
+
+export interface TrendRadarMeta {
+  asOf: Date;
+  windowDays: number;
 }
