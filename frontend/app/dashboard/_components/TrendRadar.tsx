@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { TrendItem, TrendRadarMeta } from "../_types";
 import { UpgradeStrip } from "./UpgradeStrip";
+import { TrendPanel } from "./TrendPanel";
 
 type RadarStatus = "idle" | "loading" | "done" | "error" | "scanning";
 
@@ -41,14 +42,21 @@ function formatAsOf(date: Date): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function TrendRow({ trend, index, shallow, isPro }: {
+function TrendRow({ trend, index, shallow, isPro, onClick }: {
   trend: TrendItem;
   index: number;
   shallow: boolean;
   isPro: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className="bg-[#0E1223] border border-[#1E293B] hover:border-[#22C55E]/50 rounded-lg p-5 transition-colors">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick()}
+      className="bg-[#0E1223] border border-[#1E293B] hover:border-[#22C55E]/50 rounded-lg p-5 transition-colors cursor-pointer"
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0">
           <span className="font-mono text-xs text-[#94A3B8] pt-0.5 shrink-0">#{index + 1}</span>
@@ -70,14 +78,19 @@ function TrendRow({ trend, index, shallow, isPro }: {
           </div>
         </div>
 
-        <div
-          className="flex items-center gap-3 shrink-0"
-          style={!isPro ? BLURRED : undefined}
-        >
-          <span className="font-mono text-lg font-bold text-[#22C55E]">{trend.growth}</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded font-mono border ${TAG_STYLES[trend.tag]}`}>
-            {trend.tag}
-          </span>
+        <div className="flex items-center gap-3 shrink-0">
+          <div
+            className="flex items-center gap-3"
+            style={!isPro ? BLURRED : undefined}
+          >
+            <span className="font-mono text-lg font-bold text-[#22C55E]">{trend.growth}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded font-mono border ${TAG_STYLES[trend.tag]}`}>
+              {trend.tag}
+            </span>
+          </div>
+          <svg className="w-3.5 h-3.5 text-[#334155] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </div>
       </div>
     </div>
@@ -110,6 +123,7 @@ function LoadingState() {
 
 export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, lockedCount, onRefresh }: TrendRadarProps) {
   const [sort, setSort] = useState<TrendSort>("growth");
+  const [activeTrend, setActiveTrend] = useState<{ trend: TrendItem; index: number } | null>(null);
 
   const sorted = [...trends].sort((a, b) =>
     sort === "growth" ? b.growthPct - a.growthPct : b.posts - a.posts
@@ -200,6 +214,7 @@ export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, locke
                 index={i}
                 isPro={isPro}
                 shallow={!isPro && i >= 3}
+                onClick={() => setActiveTrend({ trend, index: i })}
               />
             ))}
           </div>
@@ -208,6 +223,12 @@ export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, locke
           )}
         </>
       )}
+
+      <TrendPanel
+        trend={activeTrend?.trend ?? null}
+        rank={(activeTrend?.index ?? 0) + 1}
+        onClose={() => setActiveTrend(null)}
+      />
     </div>
   );
 }
