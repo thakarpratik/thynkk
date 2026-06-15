@@ -47,8 +47,12 @@ def _run_pipeline() -> dict[str, Any]:
     from app.radar.scoring import score_niches
 
     posts = collect_titles()
+    print(f"[radar] pulse collected {len(posts)} post titles")
+    if not posts:
+        print("[radar] WARNING: pulse returned 0 posts — Reddit may be blocking requests from this IP")
+
     result, usage = analyze_trends(posts)
-    print(f"[radar] tokens: {usage.input_tokens} in / {usage.output_tokens} out")
+    print(f"[radar] Claude returned {len(result.niches)} niches | tokens: {usage.input_tokens} in / {usage.output_tokens} out")
     niches = score_niches(result.niches)
     return {
         "niches": niches,

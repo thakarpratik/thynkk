@@ -3,7 +3,8 @@
 from dataclasses import dataclass
 import time
 
-from app.scanner.source_provider import PublicJsonProvider, SourceProvider
+from app.scanner.source_provider import SourceProvider
+from app.scanner.providers.pullpush_provider import PullPushProvider
 
 # Subreddits to monitor for the Trend Radar.
 # Growth-oriented communities where new ideas surface early.
@@ -43,7 +44,7 @@ def collect_titles(
     if subreddits is None:
         subreddits = TRACKED_SUBREDDITS
     if provider is None:
-        provider = PublicJsonProvider()
+        provider = PullPushProvider()
 
     posts: list[PulsedPost] = []
     for sub in subreddits:
