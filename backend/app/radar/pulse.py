@@ -1,13 +1,9 @@
-"""Pulse — fetch recent post titles from a set of subreddits for trend clustering."""
+"""Pulse — fetch recent post titles from tracked subreddits for trend clustering."""
 
 from dataclasses import dataclass
-import time
 
-from app.scanner.source_provider import SourceProvider
-from app.scanner.providers.pullpush_provider import PullPushProvider
+from app.scanner.providers.apify_provider import ApifyProvider
 
-# Subreddits to monitor for the Trend Radar.
-# Growth-oriented communities where new ideas surface early.
 TRACKED_SUBREDDITS = [
     "entrepreneur",
     "indiehackers",
@@ -37,29 +33,29 @@ class PulsedPost:
 
 def collect_titles(
     subreddits: list[str] | None = None,
-    provider: SourceProvider | None = None,
-    limit_per_sub: int = 50,
+    provider: ApifyProvider | None = None,
+    limit_per_sub: int = 30,
 ) -> list[PulsedPost]:
-    """Fetch recent hot post titles across tracked subreddits."""
+    """Fetch top post titles across tracked subreddits in parallel via Apify."""
     if subreddits is None:
         subreddits = TRACKED_SUBREDDITS
     if provider is None:
-        provider = PullPushProvider()
+        provider = ApifyProvider()
 
-    posts: list[PulsedPost] = []
-    for sub in subreddits:
-        try:
-            raw = provider.fetch_posts(sub, sort="hot", limit=limit_per_sub)
-            for p in raw:
-                posts.append(PulsedPost(
-                    title=p.title,
-                    subreddit=sub,
-                    score=p.score,
-                    num_comments=p.num_comments,
-                ))
-            time.sleep(1)  # gentle pacing between subreddits
-        except Exception as e:
-            print(f"[pulse] skipping r/{sub}: {e}")
-            continue
+    raw_posts = provider.fetch_posts_batch(
+        subreddits,
+        sort="top",
+        time_filter="week",
+        limit_per_sub=limit_per_sub,
+    )
 
-    return posts
+    return [
+        PulsedPost(
+            title=p.title,
+            subreddit=p.subreddit,
+            score=p.score,
+            num_comments=p.num_comments,
+        )
+        for p in raw_posts
+        if p.title.strip()
+    ]
