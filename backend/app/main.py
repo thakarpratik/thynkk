@@ -32,9 +32,11 @@ db_engine: Engine = get_engine()
 
 from app.api.scans import router as scans_router  # noqa: E402 — must be after db_engine
 from app.api.radar import router as radar_router
+from app.api.quota import router as quota_router
 
 app.include_router(scans_router)
 app.include_router(radar_router)
+app.include_router(quota_router)
 
 
 @app.get("/health")

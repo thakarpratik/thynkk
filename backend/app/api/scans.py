@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.engine import Engine
 
 from app.api.models import (
@@ -14,6 +14,7 @@ from app.api.models import (
 )
 from app.api.runner import start_scan
 from app.api.store import ScanStore
+from app.api.quota import check_quota, increment_quota, get_client_ip
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
@@ -30,13 +31,19 @@ def get_engine() -> Engine:
 
 @router.post("", response_model=ScanCreated, status_code=202)
 def submit_scan(
+    request: Request,
     body: ScanRequest,
     store: ScanStore = Depends(get_store),
     engine: Engine = Depends(get_engine),
 ) -> ScanCreated:
+    ip = get_client_ip(request)
+    check_quota(ip, engine)  # raises 429 if exceeded
+
     scan_id = str(uuid.uuid4())
     store.create(scan_id, body.query)
     start_scan(scan_id, body.query, body.post_limit, store, engine)
+
+    increment_quota(ip, engine)
     return ScanCreated(scan_id=scan_id)
 
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Mode, ScanStatus, Theme, TrendItem, TrendRadarMeta } from "./_types";
 import { FREE_LIMIT } from "./_data/mock";
-import { submitScan, pollStatus, fetchReport, fetchTrends, type Report } from "./_lib/api";
+import { submitScan, pollStatus, fetchReport, fetchTrends, fetchQuota, type Report, type QuotaStatus } from "./_lib/api";
 import { DashboardNav } from "./_components/DashboardNav";
 import { ModeToggle } from "./_components/ModeToggle";
 import { ScanInput } from "./_components/ScanInput";
@@ -34,11 +34,16 @@ export default function Dashboard() {
   const [filter, setFilter] = useState<FilterVerdict>("all");
   const [scanTime, setScanTime] = useState<Date | null>(null);
 
+  const [quota, setQuota] = useState<QuotaStatus | null>(null);
   const [trends, setTrends] = useState<TrendItem[]>([]);
   const [trendMeta, setTrendMeta] = useState<TrendRadarMeta | null>(null);
   const [radarStatus, setRadarStatus] = useState<RadarStatus>("idle");
   const [radarError, setRadarError] = useState("");
   const radarLoaded = useRef(false);
+
+  useEffect(() => {
+    fetchQuota().then(setQuota).catch(() => null);
+  }, []);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -59,6 +64,7 @@ export default function Dashboard() {
           setFromCache(report.fromCache);
           setScanTime(new Date());
           setStatus("done");
+          fetchQuota().then(setQuota).catch(() => null);
         } else if (s.status === "failed") {
           setErrorMessage(s.error ?? "Scan failed.");
           setStatus("error");
@@ -123,8 +129,13 @@ export default function Dashboard() {
     try {
       const scanId = await submitScan(query);
       poll(scanId);
-    } catch {
-      setErrorMessage("Could not reach the API. Is the server running?");
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "quota_exceeded") {
+        fetchQuota().then(setQuota).catch(() => null);
+        setErrorMessage("Scan limit reached. Upgrade to Pro for 50 scans/month.");
+      } else {
+        setErrorMessage("Could not reach the API. Is the server running?");
+      }
       setStatus("error");
     }
   };
@@ -162,6 +173,7 @@ export default function Dashboard() {
           <ScanInput
             query={query}
             status={status}
+            quota={quota}
             onChange={setQuery}
             onScan={handleScan}
           />

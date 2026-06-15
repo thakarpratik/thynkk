@@ -66,6 +66,7 @@ export async function submitScan(query: string): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, post_limit: 100 }),
   });
+  if (res.status === 429) throw new Error("quota_exceeded");
   if (!res.ok) throw new Error(`Failed to submit scan: ${res.status}`);
   const data = await res.json();
   return data.scan_id as string;
@@ -102,6 +103,20 @@ export interface TrendsResponse {
   as_of: string;
   window_days: number;
   from_cache: boolean;
+}
+
+export interface QuotaStatus {
+  is_paid: boolean;
+  scan_count: number;
+  limit: number;
+  remaining: number;
+  period_start: string;
+}
+
+export async function fetchQuota(): Promise<QuotaStatus> {
+  const res = await fetch(`${BASE}/quota/status`);
+  if (!res.ok) throw new Error(`Failed to fetch quota: ${res.status}`);
+  return res.json();
 }
 
 export async function fetchTrends(refresh = false): Promise<TrendsResponse> {
