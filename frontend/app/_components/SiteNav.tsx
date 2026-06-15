@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 
 export function SiteNav() {
   return (
@@ -14,7 +14,7 @@ export function SiteNav() {
           <Link href="/affiliate" className="hover:text-white transition-colors">Affiliate</Link>
         </div>
         <div className="flex items-center gap-4">
-          <SignedOut>
+          <Show when="signed-out">
             <SignInButton mode="modal">
               <button className="text-sm text-[#94A3B8] hover:text-white transition-colors cursor-pointer">
                 Sign in
@@ -25,8 +25,8 @@ export function SiteNav() {
                 Start free
               </button>
             </SignUpButton>
-          </SignedOut>
-          <SignedIn>
+          </Show>
+          <Show when="signed-in">
             <Link href="/dashboard" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
               Dashboard
             </Link>
@@ -37,7 +37,7 @@ export function SiteNav() {
                 },
               }}
             />
-          </SignedIn>
+          </Show>
         </div>
       </div>
     </nav>
