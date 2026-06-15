@@ -10,7 +10,7 @@ import { ScanInput } from "./_components/ScanInput";
 import { ScanningState } from "./_components/ScanningState";
 import { IdleState } from "./_components/IdleState";
 import { ErrorState } from "./_components/ErrorState";
-import { ReportHeader } from "./_components/ReportHeader";
+import { ReportHeader, type SortKey, type FilterVerdict } from "./_components/ReportHeader";
 import { ThemeCard } from "./_components/ThemeCard";
 import { ThemePanel } from "./_components/ThemePanel";
 import { UpgradeStrip } from "./_components/UpgradeStrip";
@@ -28,6 +28,9 @@ export default function Dashboard() {
   const [fromCache, setFromCache] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [activeTheme, setActiveTheme] = useState<{ theme: Theme; index: number } | null>(null);
+  const [sort, setSort] = useState<SortKey>("demand");
+  const [filter, setFilter] = useState<FilterVerdict>("all");
+  const [scanTime, setScanTime] = useState<Date | null>(null);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -47,6 +50,7 @@ export default function Dashboard() {
           const report = await fetchReport(scanId);
           setThemes(report.themes);
           setFromCache(report.fromCache);
+          setScanTime(new Date());
           setStatus("done");
         } else if (s.status === "failed") {
           setErrorMessage(s.error ?? "Scan failed.");
@@ -68,8 +72,11 @@ export default function Dashboard() {
     setScannedQuery(query);
     setThemes([]);
     setFromCache(false);
+    setScanTime(null);
     setErrorMessage("");
     setActiveTheme(null);
+    setFilter("all");
+    setSort("demand");
 
     try {
       const scanId = await submitScan(query);
@@ -93,6 +100,14 @@ export default function Dashboard() {
 
   const trendLockedCount = isPro ? 0 : Math.max(0, MOCK_TRENDS.length - FREE_LIMIT);
   const lockedCount = isPro ? 0 : Math.max(0, themes.length - FREE_LIMIT);
+
+  const sortedFilteredThemes = [...themes]
+    .filter((t) => filter === "all" || t.verdict === filter)
+    .sort((a, b) => {
+      if (sort === "demand") return b.demand - a.demand;
+      if (sort === "severity") return b.severity - a.severity;
+      return b.mentions - a.mentions;
+    });
 
   return (
     <div className="min-h-dvh bg-[#020617] text-[#F8FAFC]">
@@ -124,10 +139,15 @@ export default function Dashboard() {
               isPro={isPro}
               freeLimit={FREE_LIMIT}
               fromCache={fromCache}
+              scanTime={scanTime}
+              sort={sort}
+              filter={filter}
+              onSortChange={setSort}
+              onFilterChange={setFilter}
             />
 
             <div className="space-y-4">
-              {themes.map((theme, i) => (
+              {sortedFilteredThemes.map((theme, i) => (
                 <ThemeCard
                   key={theme.name}
                   theme={theme}
