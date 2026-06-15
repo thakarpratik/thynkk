@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 
 interface DashboardNavProps {
   isPro: boolean;
@@ -22,6 +23,13 @@ export function DashboardNav({ isPro }: DashboardNavProps) {
               Upgrade
             </button>
           )}
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: "w-7 h-7",
+              },
+            }}
+          />
         </div>
       </div>
     </nav>

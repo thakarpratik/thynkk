@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 export function SiteNav() {
   return (
@@ -13,10 +14,30 @@ export function SiteNav() {
           <Link href="/affiliate" className="hover:text-white transition-colors">Affiliate</Link>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="text-sm text-[#94A3B8] hover:text-white transition-colors">Sign in</Link>
-          <Link href="/dashboard" className="text-sm bg-[#6366F1] hover:bg-[#4F46E5] text-white px-4 py-2 rounded-md font-medium transition-colors">
-            Start free
-          </Link>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button className="text-sm text-[#94A3B8] hover:text-white transition-colors cursor-pointer">
+                Sign in
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="text-sm bg-[#6366F1] hover:bg-[#4F46E5] text-white px-4 py-2 rounded-md font-medium transition-colors cursor-pointer">
+                Start free
+              </button>
+            </SignUpButton>
+          </SignedOut>
+          <SignedIn>
+            <Link href="/dashboard" className="text-sm text-[#94A3B8] hover:text-white transition-colors">
+              Dashboard
+            </Link>
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "w-8 h-8",
+                },
+              }}
+            />
+          </SignedIn>
         </div>
       </div>
     </nav>
