@@ -1,22 +1,11 @@
 import Link from "next/link";
+import { SiteNav } from "./_components/SiteNav";
+import { SiteFooter } from "./_components/SiteFooter";
 
 export default function LandingPage() {
   return (
     <div className="min-h-dvh bg-[#020617] text-[#F8FAFC]">
-      {/* Nav */}
-      <nav className="fixed top-0 w-full z-50 border-b border-[#1E293B] bg-[#020617]/90 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="font-mono font-bold text-xl tracking-tight">
-            thynkk<span className="text-[#6366F1]">.</span>
-          </span>
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-sm text-[#94A3B8] hover:text-white transition-colors">Sign in</Link>
-            <Link href="/dashboard" className="text-sm bg-[#6366F1] hover:bg-[#4F46E5] text-white px-4 py-2 rounded-md font-medium transition-colors">
-              Start free
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <SiteNav />
 
       {/* Hero */}
       <section className="pt-40 pb-24 px-6">
@@ -26,7 +15,7 @@ export default function LandingPage() {
             Reddit intelligence · updated daily
           </div>
           <h1 className="font-mono text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Think before<br />
+            Thynkk before<br />
             <span className="text-gradient">you build.</span>
           </h1>
           <p className="text-xl text-[#94A3B8] max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -63,7 +52,7 @@ export default function LandingPage() {
                   <h3 className="font-mono font-bold text-lg">Pain Point Scanner</h3>
                 </div>
               </div>
-              <p className="text-[#94A3B8] text-sm mb-6">Enter a niche or subreddit. Get ranked pain points with real quotes and demand scores. Validate before you build.</p>
+              <p className="text-[#94A3B8] text-sm mb-6">Enter a niche or subreddit. Get ranked pain points with real quotes and demand scores. Thynkk before you build.</p>
               <div className="bg-[#1A1E2F] rounded-md p-4 font-mono text-sm space-y-2.5">
                 <div className="flex justify-between text-[10px] text-[#94A3B8] pb-2 border-b border-[#1E293B] uppercase">
                   <span>Theme</span><span>Demand</span>
@@ -77,7 +66,7 @@ export default function LandingPage() {
                     <div className="flex-1 text-xs text-[#F8FAFC] truncate">{t.name}</div>
                     <div className="flex items-center gap-2">
                       <div className="w-16 h-1.5 bg-[#1E293B] rounded-full overflow-hidden">
-                        <div className="h-full bg-[#6366F1] rounded-full transition-all" style={{ width: `${t.score}%`, opacity: 1 - i * 0.25 }} />
+                        <div className="h-full bg-[#6366F1] rounded-full" style={{ width: `${t.score}%`, opacity: 1 - i * 0.25 }} />
                       </div>
                       <span className="text-xs text-[#94A3B8] w-5 text-right">{t.score}</span>
                     </div>
@@ -147,7 +136,7 @@ export default function LandingPage() {
               <p className="text-[#94A3B8] text-sm mb-6">Forever. No card needed.</p>
               <div className="font-mono text-4xl font-bold mb-8">$0</div>
               <ul className="space-y-3 text-sm text-[#94A3B8] mb-8">
-                {["Top 3 pain-point themes per scan", "Top 3 trending niches", "Unlimited scans", "Source quotes + links"].map((f) => (
+                {["1 free scan", "Top 3 pain-point themes", "Top 3 trending niches", "Source quotes + links"].map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-[#22C55E] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -168,7 +157,7 @@ export default function LandingPage() {
                 $19<span className="text-lg text-[#94A3B8] font-normal">/mo</span>
               </div>
               <ul className="space-y-3 text-sm text-[#94A3B8] mb-8">
-                {["Full pain-point reports", "Full Trend Radar feed", "CSV + PDF exports", "Saved searches", "Weekly Pain Point digest", "Weekly Trend Radar digest"].map((f) => (
+                {["50 scans per month", "Full pain-point reports", "Full Trend Radar feed", "CSV + PDF exports", "Saved searches", "Weekly digest emails"].map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-[#22C55E] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -198,13 +187,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-[#1E293B] py-8 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-[#94A3B8]">
-          <span className="font-mono font-bold text-[#F8FAFC]">thynkk<span className="text-[#6366F1]">.</span></span>
-          <span>Market intelligence from Reddit, instantly.</span>
-          <span>© 2026 Thynkk</span>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
