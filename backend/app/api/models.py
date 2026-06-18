@@ -1,5 +1,10 @@
+import re
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+# Subreddit name or freetext keyword, no prompt-injection payloads
+_QUERY_CLEAN = re.compile(r"[^\w\s/\-\.]")
+_MAX_QUERY_LEN = 100
 
 
 class ScanStatus(str, Enum):
@@ -12,6 +17,25 @@ class ScanStatus(str, Enum):
 class ScanRequest(BaseModel):
     query: str
     post_limit: int = 100
+
+    @field_validator("query")
+    @classmethod
+    def sanitize_query(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("query cannot be empty")
+        if len(v) > _MAX_QUERY_LEN:
+            raise ValueError(f"query too long (max {_MAX_QUERY_LEN} chars)")
+        # Strip characters that have no business in a subreddit name or keyword
+        cleaned = _QUERY_CLEAN.sub("", v).strip()
+        if not cleaned:
+            raise ValueError("query contains no valid characters")
+        return cleaned
+
+    @field_validator("post_limit")
+    @classmethod
+    def clamp_post_limit(cls, v: int) -> int:
+        return max(10, min(v, 200))
 
 
 class ScanCreated(BaseModel):

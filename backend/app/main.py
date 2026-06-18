@@ -15,10 +15,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.engine import Engine
 
 from app.scanner.harvest import get_engine
+from app.middleware.rate_limit import RateLimitMiddleware
 
 load_dotenv()
 
 app = FastAPI(title="Thynkk API", version="0.1.0")
+
+# Rate limiting before CORS so abusive requests are dropped immediately
+app.add_middleware(RateLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

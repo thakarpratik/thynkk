@@ -44,6 +44,10 @@ def _current_period_start() -> datetime:
 
 
 def get_client_ip(request: Request) -> str:
+    for header in ("CF-Connecting-IP", "X-Real-IP"):
+        val = request.headers.get(header)
+        if val:
+            return val.strip()
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0].strip()
