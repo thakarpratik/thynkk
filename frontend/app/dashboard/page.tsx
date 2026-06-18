@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Mode, ScanStatus, Theme, TrendItem, TrendRadarMeta } from "./_types";
 import { FREE_LIMIT } from "./_data/mock";
 import { submitScan, pollStatus, fetchReport, fetchTrends, fetchQuota, type Report, type QuotaStatus } from "./_lib/api";
-import { DashboardNav } from "./_components/DashboardNav";
+import { SiteNav } from "../_components/SiteNav";
+import { SiteFooter } from "../_components/SiteFooter";
 import { ModeToggle } from "./_components/ModeToggle";
 import { ScanInput } from "./_components/ScanInput";
 import { ScanningState } from "./_components/ScanningState";
@@ -177,7 +178,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-dvh bg-[#020617] text-[#F8FAFC]">
-      <DashboardNav isPro={isPro} />
+      <SiteNav />
 
       <main className="max-w-4xl mx-auto px-6 pt-24 pb-16">
         <ModeToggle mode={mode} onChange={handleModeChange} />
@@ -259,6 +260,8 @@ export default function Dashboard() {
         isPro={isPro}
         onClose={() => setActiveTheme(null)}
       />
+
+      <SiteFooter />
     </div>
   );
 }
