@@ -15,6 +15,7 @@ interface TrendRadarProps {
   isPro: boolean;
   lockedCount: number;
   onRefresh: () => void;
+  onScan: () => void;
 }
 
 type TrendSort = "growth" | "posts";
@@ -97,6 +98,80 @@ function TrendRow({ trend, index, shallow, isPro, onClick }: {
   );
 }
 
+const RADAR_CATEGORIES = [
+  { label: "SaaS & Startups", desc: "r/SaaS · r/startups · r/entrepreneur" },
+  { label: "Indie Hackers", desc: "r/indiehackers · r/SideProject" },
+  { label: "Dev Tools", desc: "r/webdev · r/programming · r/MachineLearning" },
+  { label: "Small Business", desc: "r/smallbusiness · r/ecommerce" },
+];
+
+const EXAMPLE_TRENDS = [
+  { niche: "AI writing assistants", growth: "+340%", tag: "HOT" as const },
+  { niche: "Solo dev SaaS tools", growth: "+180%", tag: "RISING" as const },
+  { niche: "Micro-SaaS communities", growth: "+92%", tag: "NEW" as const },
+];
+
+function RadarIdleState({ onScan }: { onScan: () => void }) {
+  return (
+    <div className="space-y-8 py-4">
+
+      <div>
+        <p className="text-xs font-mono text-[#475569] uppercase tracking-widest mb-3">What Trend Radar does</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {RADAR_CATEGORIES.map((c) => (
+            <div
+              key={c.label}
+              className="bg-[#0E1223] border border-[#1E293B] rounded-lg px-4 py-3"
+            >
+              <p className="font-mono text-sm text-[#F8FAFC]">{c.label}</p>
+              <p className="text-xs text-[#475569] mt-0.5">{c.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-mono text-[#475569] uppercase tracking-widest mb-3">Example output · last 7 days</p>
+        <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1E293B]">
+            <span className="text-xs font-mono text-[#475569]">Niche</span>
+            <span className="text-xs font-mono text-[#475569]">7-day growth</span>
+          </div>
+          {EXAMPLE_TRENDS.map((t, i) => (
+            <div key={t.niche} className={`flex items-center justify-between px-4 py-3 ${i < EXAMPLE_TRENDS.length - 1 ? "border-b border-[#1E293B]" : ""}`}>
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-xs font-mono text-[#334155] shrink-0">#{i + 1}</span>
+                <span className="text-sm text-[#CBD5E1] truncate">{t.niche}</span>
+                <span className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${TAG_STYLES[t.tag]}`}>
+                  {t.tag}
+                </span>
+              </div>
+              <span className="font-mono text-sm font-bold text-[#22C55E] shrink-0 ml-4">{t.growth}</span>
+            </div>
+          ))}
+          <div className="px-4 py-3 bg-[#080D1A] border-t border-[#1E293B]">
+            <button
+              onClick={onScan}
+              className="text-xs font-mono text-[#22C55E] hover:text-[#4ADE80] transition-colors cursor-pointer"
+            >
+              Run live radar scan →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={onScan}
+        className="w-full bg-[#0E1223] border border-[#22C55E]/40 hover:border-[#22C55E] hover:bg-[#22C55E]/5 text-[#22C55E] rounded-lg py-4 font-mono font-semibold text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+        Scan Reddit for trending niches now
+      </button>
+
+    </div>
+  );
+}
+
 function LoadingState() {
   return (
     <div className="space-y-3">
@@ -121,7 +196,7 @@ function LoadingState() {
   );
 }
 
-export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, lockedCount, onRefresh }: TrendRadarProps) {
+export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, lockedCount, onRefresh, onScan }: TrendRadarProps) {
   const [sort, setSort] = useState<TrendSort>("growth");
   const [activeTrend, setActiveTrend] = useState<{ trend: TrendItem; index: number } | null>(null);
 
@@ -132,6 +207,10 @@ export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, locke
   const isLoading = radarStatus === "loading" || radarStatus === "scanning";
   const isStale = meta ? Date.now() - meta.asOf.getTime() > 86400000 * 2 : false;
   const asOfLabel = meta ? formatAsOf(meta.asOf) : null;
+
+  if (radarStatus === "idle") {
+    return <RadarIdleState onScan={onScan} />;
+  }
 
   return (
     <div>

@@ -39,8 +39,6 @@ export default function Dashboard() {
   const [trendMeta, setTrendMeta] = useState<TrendRadarMeta | null>(null);
   const [radarStatus, setRadarStatus] = useState<RadarStatus>("idle");
   const [radarError, setRadarError] = useState("");
-  const radarLoaded = useRef(false);
-
   useEffect(() => {
     fetchQuota().then(setQuota).catch(() => null);
   }, []);
@@ -104,14 +102,6 @@ export default function Dashboard() {
       }
     }
   }, []);
-
-  // Load trends once when radar tab is first opened
-  useEffect(() => {
-    if (mode === "radar" && !radarLoaded.current) {
-      radarLoaded.current = true;
-      loadTrends();
-    }
-  }, [mode, loadTrends]);
 
   const handleQuickScan = (q: string) => {
     setQuery(q);
@@ -250,6 +240,7 @@ export default function Dashboard() {
             radarError={radarError}
             isPro={isPro}
             lockedCount={trendLockedCount}
+            onScan={() => loadTrends()}
             onRefresh={() => loadTrends(true)}
           />
         )}
