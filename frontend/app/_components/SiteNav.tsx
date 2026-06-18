@@ -15,12 +15,12 @@ export function SiteNav() {
         </div>
         <div className="flex items-center gap-4">
           <Show when="signed-out">
-            <SignInButton mode="modal">
+            <SignInButton mode="modal" forceRedirectUrl="/dashboard">
               <button className="text-sm text-[#94A3B8] hover:text-white transition-colors cursor-pointer">
                 Sign in
               </button>
             </SignInButton>
-            <SignUpButton mode="modal">
+            <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
               <button className="text-sm bg-[#6366F1] hover:bg-[#4F46E5] text-white px-4 py-2 rounded-md font-medium transition-colors cursor-pointer">
                 Start free
               </button>

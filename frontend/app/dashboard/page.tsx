@@ -113,6 +113,29 @@ export default function Dashboard() {
     }
   }, [mode, loadTrends]);
 
+  const handleQuickScan = (q: string) => {
+    setQuery(q);
+    setStatus("loading");
+    setScannedQuery(q);
+    setThemes([]);
+    setFromCache(false);
+    setScanTime(null);
+    setErrorMessage("");
+    setActiveTheme(null);
+    setFilter("all");
+    setSort("demand");
+    stopPolling();
+    submitScan(q).then(poll).catch((e: unknown) => {
+      if (e instanceof Error && e.message === "quota_exceeded") {
+        fetchQuota().then(setQuota).catch(() => null);
+        setErrorMessage("Scan limit reached. Upgrade to Pro for 50 scans/month.");
+      } else {
+        setErrorMessage("Could not reach the API. Is the server running?");
+      }
+      setStatus("error");
+    });
+  };
+
   const handleScan = async () => {
     if (!query.trim()) return;
     stopPolling();
@@ -231,7 +254,12 @@ export default function Dashboard() {
           />
         )}
 
-        {mode === "scanner" && status === "idle" && <IdleState />}
+        {mode === "scanner" && status === "idle" && (
+          <IdleState
+            onScan={handleQuickScan}
+            onSwitchRadar={() => handleModeChange("radar")}
+          />
+        )}
       </main>
 
       <ThemePanel
