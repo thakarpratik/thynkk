@@ -3,8 +3,14 @@ import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
 
 export const metadata = {
-  title: "Reviews — Thynkk",
-  description: "What founders and marketers say about Thynkk.",
+  title: "Reviews",
+  description: "See what indie hackers, founders, and marketers say about using Thynkk to validate ideas and find untapped niches from Reddit.",
+  alternates: { canonical: "https://thynkk.co/reviews" },
+  openGraph: {
+    title: "Thynkk Reviews — What founders say",
+    description: "See what indie hackers, founders, and marketers say about using Thynkk to validate ideas and find untapped niches from Reddit.",
+    url: "https://thynkk.co/reviews",
+  },
 };
 
 const REVIEWS = [

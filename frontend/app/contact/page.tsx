@@ -2,8 +2,14 @@ import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
 
 export const metadata = {
-  title: "Contact — Thynkk",
-  description: "Get in touch with the Thynkk team.",
+  title: "Contact",
+  description: "Have a question, feature request, or partnership idea? Get in touch with the Thynkk team — we respond within 24 hours.",
+  alternates: { canonical: "https://thynkk.co/contact" },
+  openGraph: {
+    title: "Contact Thynkk",
+    description: "Have a question, feature request, or partnership idea? Get in touch — we respond within 24 hours.",
+    url: "https://thynkk.co/contact",
+  },
 };
 
 const TOPICS = [

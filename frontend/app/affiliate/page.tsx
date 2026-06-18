@@ -3,8 +3,14 @@ import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
 
 export const metadata = {
-  title: "Affiliate Program — Thynkk",
-  description: "Earn 30% recurring commission for every paid Thynkk subscriber you refer.",
+  title: "Affiliate Program",
+  description: "Earn 30% recurring commission for every paid Thynkk subscriber you refer. No cap, no expiry — your referrals pay you every month they stay subscribed.",
+  alternates: { canonical: "https://thynkk.co/affiliate" },
+  openGraph: {
+    title: "Thynkk Affiliate Program — 30% recurring commission",
+    description: "Earn 30% recurring commission for every paid Thynkk subscriber you refer. No cap, no expiry.",
+    url: "https://thynkk.co/affiliate",
+  },
 };
 
 const STEPS = [

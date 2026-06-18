@@ -1,6 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteNav } from "./_components/SiteNav";
 import { SiteFooter } from "./_components/SiteFooter";
+
+export const metadata: Metadata = {
+  title: "Thynkk — Thynkk before you build",
+  description: "Turn Reddit into a market research engine. Surface pain points, validate ideas, and discover trending niches — before your competitors do. Free to try.",
+  alternates: { canonical: "https://thynkk.co" },
+  openGraph: {
+    title: "Thynkk — Thynkk before you build",
+    description: "Turn Reddit into a market research engine. Surface pain points, validate ideas, and discover trending niches — before your competitors do.",
+    url: "https://thynkk.co",
+  },
+};
 
 export default function LandingPage() {
   return (

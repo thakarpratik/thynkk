@@ -2,8 +2,10 @@ import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
 
 export const metadata = {
-  title: "Privacy Policy — Thynkk",
-  description: "How Thynkk handles your data.",
+  title: "Privacy Policy",
+  description: "How Thynkk collects, uses, and protects your data. We keep it minimal — no selling, no third-party ad tracking.",
+  alternates: { canonical: "https://thynkk.co/privacy" },
+  robots: { index: false },
 };
 
 export default function PrivacyPage() {

@@ -3,8 +3,14 @@ import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
 
 export const metadata = {
-  title: "About — Thynkk",
-  description: "Why we built Thynkk and what drives us.",
+  title: "About",
+  description: "Thynkk was built for founders who are tired of guessing. Learn why we turned Reddit into a market research engine and what we're building next.",
+  alternates: { canonical: "https://thynkk.co/about" },
+  openGraph: {
+    title: "About Thynkk",
+    description: "Thynkk was built for founders who are tired of guessing. Learn why we turned Reddit into a market research engine.",
+    url: "https://thynkk.co/about",
+  },
 };
 
 export default function AboutPage() {

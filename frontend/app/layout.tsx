@@ -2,9 +2,38 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
+const BASE_URL = "https://thynkk.co";
+
 export const metadata: Metadata = {
-  title: "Thynkk — Think before you build",
-  description: "Market intelligence from Reddit, instantly. Surface pain points and discover trending niches.",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "Thynkk — Thynkk before you build",
+    template: "%s | Thynkk",
+  },
+  description: "Turn Reddit into a market research engine. Surface real pain points and discover trending niches before your competitors do.",
+  keywords: ["market research", "reddit insights", "pain point analysis", "niche discovery", "product validation", "indie hacker tools", "saas market research"],
+  authors: [{ name: "Thynkk" }],
+  creator: "Thynkk",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: BASE_URL,
+    siteName: "Thynkk",
+    title: "Thynkk — Thynkk before you build",
+    description: "Turn Reddit into a market research engine. Surface real pain points and discover trending niches before your competitors do.",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Thynkk — Market intelligence from Reddit" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Thynkk — Thynkk before you build",
+    description: "Turn Reddit into a market research engine. Surface real pain points and discover trending niches before your competitors do.",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

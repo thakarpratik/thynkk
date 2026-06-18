@@ -2,8 +2,10 @@ import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
 
 export const metadata = {
-  title: "Terms & Conditions — Thynkk",
-  description: "Thynkk terms of service and conditions of use.",
+  title: "Terms & Conditions",
+  description: "Read Thynkk's terms of service — what you can do with your account, how subscriptions work, and our fair use policy.",
+  alternates: { canonical: "https://thynkk.co/terms" },
+  robots: { index: false },
 };
 
 export default function TermsPage() {
