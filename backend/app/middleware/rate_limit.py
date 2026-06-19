@@ -57,6 +57,10 @@ def _sliding_window_ok(window: deque, max_req: int, window_sec: int) -> tuple[bo
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Always pass OPTIONS through so CORS preflight works
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         ip = _get_ip(request)
         path = request.url.path
         method = request.method
