@@ -68,11 +68,12 @@ export default function AdminPage() {
         headers: { Authorization: `Bearer ${s}` },
       });
       if (res.status === 401) { setError("Wrong secret."); return; }
-      if (!res.ok) { setError(`Error ${res.status}`); return; }
+      if (res.status === 503) { setError("Backend is down or restarting — check Railway logs."); return; }
+      if (!res.ok) { setError(`Backend returned ${res.status}`); return; }
       setStats(await res.json());
       setAuthed(true);
-    } catch {
-      setError("Could not reach API.");
+    } catch (e) {
+      setError(`Could not reach API at ${API} — check CORS_ORIGINS and that Railway is running.`);
     } finally {
       setLoading(false);
     }
