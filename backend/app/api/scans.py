@@ -41,7 +41,7 @@ def submit_scan(
 
     scan_id = str(uuid.uuid4())
     store.create(scan_id, body.query)
-    start_scan(scan_id, body.query, body.post_limit, store, engine)
+    start_scan(scan_id, body.query, body.post_limit, store, engine, ip=ip)
 
     increment_quota(ip, engine)
     return ScanCreated(scan_id=scan_id)
