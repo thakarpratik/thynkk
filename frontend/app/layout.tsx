@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import Script from "next/script";
 import "./globals.css";
 
 const BASE_URL = "https://thynkk.co";
@@ -36,10 +37,26 @@ export const metadata: Metadata = {
   },
 };
 
+const GA_ID = "G-0K78T12WS9";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <html lang="en" className="h-full">
+        <head>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+            strategy="afterInteractive"
+          />
+          <Script id="ga-init" strategy="afterInteractive">
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_ID}', { page_path: window.location.pathname });
+            `}
+          </Script>
+        </head>
         <body className="min-h-full bg-[#020617] antialiased">{children}</body>
       </html>
     </ClerkProvider>
