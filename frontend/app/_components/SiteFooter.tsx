@@ -19,6 +19,7 @@ export function SiteFooter() {
               <li><Link href="/dashboard" className="hover:text-[#94A3B8] transition-colors">Pain Point Scanner</Link></li>
               <li><Link href="/dashboard?mode=radar" className="hover:text-[#94A3B8] transition-colors">Trend Radar</Link></li>
               <li><Link href="/case-studies" className="hover:text-[#94A3B8] transition-colors">Case studies</Link></li>
+              <li><Link href="/methodology" className="hover:text-[#94A3B8] transition-colors">Methodology</Link></li>
             </ul>
           </div>
           <div>

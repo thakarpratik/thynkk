@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export type SortKey = "demand" | "severity" | "mentions";
 export type FilterVerdict = "all" | "Strong signal" | "Weak signal" | "Already crowded";
 
@@ -86,6 +88,14 @@ export function ReportHeader({
 
       {/* Sort + filter row */}
       <div className="flex items-center gap-2 flex-wrap">
+        <Link
+          href="/methodology"
+          target="_blank"
+          className="text-[10px] font-mono text-[#475569] hover:text-[#6366F1] transition-colors"
+        >
+          How demand is ranked ↗
+        </Link>
+        <span className="text-[#1E293B] mx-1">|</span>
         <span className="text-[10px] font-mono text-[#475569] uppercase tracking-widest">Sort:</span>
         {SORT_OPTIONS.map((opt) => (
           <button

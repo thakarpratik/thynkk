@@ -228,7 +228,10 @@ export default function CaseStudiesPage() {
         <h1 className="font-mono text-4xl font-bold mb-4 text-center">Real scan results</h1>
         <p className="text-[#94A3B8] text-center mb-16 max-w-2xl mx-auto leading-relaxed">
           Example outputs from Thynkk scans — ranked themes, demand scores, verdicts, and build-ready opportunities.
-          Every quote links back to Reddit. No fabricated testimonials.
+          Every quote links back to Reddit. No fabricated testimonials.{" "}
+          <Link href="/methodology" className="text-[#6366F1] hover:underline">
+            How demand is ranked →
+          </Link>
         </p>
 
         <div className="space-y-8 mb-16">
