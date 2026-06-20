@@ -1,5 +1,7 @@
 "use client";
 
+import { LiveActivity } from "../../_components/LiveActivity";
+
 interface IdleStateProps {
   onScan: (query: string) => void;
   onSwitchRadar: () => void;
@@ -23,6 +25,7 @@ const EXAMPLE_THEMES = [
 export function IdleState({ onScan, onSwitchRadar }: IdleStateProps) {
   return (
     <div className="space-y-8 py-4">
+      <LiveActivity variant="compact" />
 
       {/* Quick start */}
       <div>

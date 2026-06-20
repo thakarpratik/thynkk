@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
 import { PlanCTA } from "../_components/PlanCTA";
+import { LiveActivity } from "../_components/LiveActivity";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -46,9 +47,12 @@ export default function PricingPage() {
       <main className="max-w-3xl mx-auto px-6 pt-36 pb-24">
         <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">Pricing</p>
         <h1 className="font-mono text-4xl font-bold text-center mb-4">Simple. No tricks.</h1>
-        <p className="text-center text-[#94A3B8] mb-12 max-w-xl mx-auto">
+        <p className="text-center text-[#94A3B8] mb-6 max-w-xl mx-auto">
           Start free. Upgrade when you need full reports and more scans.
         </p>
+        <div className="flex justify-center mb-12">
+          <LiveActivity variant="compact" />
+        </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-8">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SiteNav } from "./_components/SiteNav";
 import { SiteFooter } from "./_components/SiteFooter";
 import { PlanCTA } from "./_components/PlanCTA";
+import { LiveActivity } from "./_components/LiveActivity";
 
 export const metadata: Metadata = {
   title: "Thynkk — Thynkk before you build",
@@ -23,10 +24,7 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="pt-40 pb-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#1A1E2F] border border-[#1E293B] rounded-full px-4 py-1.5 text-sm text-[#94A3B8] mb-8">
-            <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-            Reddit intelligence · updated daily
-          </div>
+          <LiveActivity />
           <h1 className="font-mono text-5xl md:text-6xl font-bold mb-6 leading-tight">
             Thynkk before<br />
             <span className="text-gradient">you build.</span>
