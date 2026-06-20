@@ -18,7 +18,7 @@ export function SiteFooter() {
             <ul className="space-y-2 text-sm text-[#475569]">
               <li><Link href="/dashboard" className="hover:text-[#94A3B8] transition-colors">Pain Point Scanner</Link></li>
               <li><Link href="/dashboard?mode=radar" className="hover:text-[#94A3B8] transition-colors">Trend Radar</Link></li>
-              <li><Link href="/reviews" className="hover:text-[#94A3B8] transition-colors">Reviews</Link></li>
+              <li><Link href="/case-studies" className="hover:text-[#94A3B8] transition-colors">Case studies</Link></li>
             </ul>
           </div>
           <div>
