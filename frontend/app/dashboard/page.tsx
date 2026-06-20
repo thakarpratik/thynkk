@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import type { Mode, ScanStatus, Theme, TrendItem, TrendRadarMeta } from "./_types";
 import { FREE_LIMIT } from "./_data/mock";
@@ -32,6 +33,7 @@ const POLL_INTERVAL_MS = 3000;
 type RadarStatus = "idle" | "loading" | "done" | "error" | "scanning";
 
 export default function Dashboard() {
+  const searchParams = useSearchParams();
   const { getToken } = useAuth();
   const [isPro, setIsPro] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -76,6 +78,12 @@ export default function Dashboard() {
   useEffect(() => {
     refreshAccount();
   }, [refreshAccount]);
+
+  useEffect(() => {
+    if (searchParams.get("upgrade") === "true") {
+      openUpgrade();
+    }
+  }, [searchParams, openUpgrade]);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

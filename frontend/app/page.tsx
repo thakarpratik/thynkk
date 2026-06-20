@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteNav } from "./_components/SiteNav";
 import { SiteFooter } from "./_components/SiteFooter";
+import { PlanCTA } from "./_components/PlanCTA";
 
 export const metadata: Metadata = {
   title: "Thynkk — Thynkk before you build",
@@ -157,9 +158,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/dashboard" className="block text-center border border-[#1E293B] hover:border-[#6366F1] text-[#F8FAFC] px-6 py-2.5 rounded-md font-medium text-sm transition-all">
-                Get started free
-              </Link>
+              <PlanCTA plan="free" />
             </div>
             <div className="bg-[#0E1223] border border-[#6366F1] rounded-lg p-8 relative" style={{ boxShadow: "0 0 24px rgba(99,102,241,0.2)" }}>
               <div className="absolute -top-3 left-6 bg-[#6366F1] text-white text-xs font-mono px-3 py-1 rounded-full">MOST POPULAR</div>
@@ -178,9 +177,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/dashboard" className="block text-center bg-[#6366F1] hover:bg-[#4F46E5] text-white px-6 py-2.5 rounded-md font-medium text-sm transition-colors">
-                Start free trial
-              </Link>
+              <PlanCTA plan="pro" />
             </div>
           </div>
         </div>

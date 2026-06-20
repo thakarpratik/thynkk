@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
+import { PlanCTA } from "../_components/PlanCTA";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -63,12 +63,7 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
-            <Link
-              href="/dashboard"
-              className="block text-center border border-[#1E293B] hover:border-[#6366F1] text-[#F8FAFC] px-6 py-2.5 rounded-md font-medium text-sm transition-all"
-            >
-              Get started free
-            </Link>
+            <PlanCTA plan="free" />
           </div>
 
           <div
@@ -91,12 +86,7 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
-            <Link
-              href="/dashboard"
-              className="block text-center bg-[#6366F1] hover:bg-[#4F46E5] text-white px-6 py-2.5 rounded-md font-medium text-sm transition-colors"
-            >
-              Start free trial
-            </Link>
+            <PlanCTA plan="pro" />
           </div>
         </div>
 
