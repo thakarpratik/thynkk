@@ -11,7 +11,7 @@ export function SiteNav() {
         <div className="hidden md:flex items-center gap-6 text-sm text-[#94A3B8]">
           <Link href="/about" className="hover:text-white transition-colors">About</Link>
           <Link href="/reviews" className="hover:text-white transition-colors">Reviews</Link>
-          <Link href="/affiliate" className="hover:text-white transition-colors">Affiliate</Link>
+          <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
         </div>
         <div className="flex items-center gap-4">
           <Show when="signed-out">

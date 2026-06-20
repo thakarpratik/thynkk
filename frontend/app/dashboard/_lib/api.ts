@@ -4,6 +4,8 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 type ApiScanStatus = "queued" | "running" | "done" | "failed";
 
+type TokenGetter = () => Promise<string | null>;
+
 interface StatusResponse {
   scan_id: string;
   status: ApiScanStatus;
@@ -43,49 +45,10 @@ export interface Report {
   fromCache: boolean;
 }
 
-function toTheme(t: ApiTheme): Theme {
-  return {
-    name: t.name,
-    summary: t.summary,
-    opportunity: t.opportunity,
-    severity: t.severity_score,
-    mentions: t.mention_count,
-    demand: Math.round(t.demand_score),
-    verdict: t.verdict ?? "Unknown",
-    willingnessToPay: t.willingness_to_pay ?? "Unknown",
-    willingnessReason: t.willingness_reason ?? "",
-    competition: t.competition ?? "",
-    nextStep: t.next_step ?? "",
-    quotes: t.quotes.map((q) => ({ text: q.excerpt, url: q.permalink })),
-  };
-}
-
-export async function submitScan(query: string): Promise<string> {
-  const res = await fetch(`${BASE}/scans`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, post_limit: 100 }),
-  });
-  if (res.status === 429) throw new Error("quota_exceeded");
-  if (!res.ok) throw new Error(`Failed to submit scan: ${res.status}`);
-  const data = await res.json();
-  return data.scan_id as string;
-}
-
-export async function pollStatus(scanId: string): Promise<StatusResponse> {
-  const res = await fetch(`${BASE}/scans/${scanId}/status`);
-  if (!res.ok) throw new Error(`Failed to poll status: ${res.status}`);
-  return res.json();
-}
-
-export async function fetchReport(scanId: string): Promise<Report> {
-  const res = await fetch(`${BASE}/scans/${scanId}/report`);
-  if (!res.ok) throw new Error(`Failed to fetch report: ${res.status}`);
-  const data: ReportResponse = await res.json();
-  return {
-    themes: data.themes.map(toTheme),
-    fromCache: data.from_cache ?? false,
-  };
+export interface BillingStatus {
+  is_paid: boolean;
+  subscription_id: string | null;
+  subscription_status: string | null;
 }
 
 export interface TrendItemApi {
@@ -113,9 +76,94 @@ export interface QuotaStatus {
   period_start: string;
 }
 
-export async function fetchQuota(): Promise<QuotaStatus> {
-  const res = await fetch(`${BASE}/quota/status`);
+async function authHeaders(getToken?: TokenGetter): Promise<HeadersInit> {
+  if (!getToken) return {};
+  const token = await getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function toTheme(t: ApiTheme): Theme {
+  return {
+    name: t.name,
+    summary: t.summary,
+    opportunity: t.opportunity,
+    severity: t.severity_score,
+    mentions: t.mention_count,
+    demand: Math.round(t.demand_score),
+    verdict: t.verdict ?? "Unknown",
+    willingnessToPay: t.willingness_to_pay ?? "Unknown",
+    willingnessReason: t.willingness_reason ?? "",
+    competition: t.competition ?? "",
+    nextStep: t.next_step ?? "",
+    quotes: t.quotes.map((q) => ({ text: q.excerpt, url: q.permalink })),
+  };
+}
+
+export async function submitScan(query: string, getToken?: TokenGetter): Promise<string> {
+  const res = await fetch(`${BASE}/scans`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(await authHeaders(getToken)),
+    },
+    body: JSON.stringify({ query, post_limit: 100 }),
+  });
+  if (res.status === 429) throw new Error("quota_exceeded");
+  if (!res.ok) throw new Error(`Failed to submit scan: ${res.status}`);
+  const data = await res.json();
+  return data.scan_id as string;
+}
+
+export async function pollStatus(scanId: string): Promise<StatusResponse> {
+  const res = await fetch(`${BASE}/scans/${scanId}/status`);
+  if (!res.ok) throw new Error(`Failed to poll status: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchReport(scanId: string, getToken?: TokenGetter): Promise<Report> {
+  const res = await fetch(`${BASE}/scans/${scanId}/report`, {
+    headers: await authHeaders(getToken),
+  });
+  if (!res.ok) throw new Error(`Failed to fetch report: ${res.status}`);
+  const data: ReportResponse = await res.json();
+  return {
+    themes: data.themes.map(toTheme),
+    fromCache: data.from_cache ?? false,
+  };
+}
+
+export async function fetchQuota(getToken?: TokenGetter): Promise<QuotaStatus> {
+  const res = await fetch(`${BASE}/quota/status`, {
+    headers: await authHeaders(getToken),
+  });
   if (!res.ok) throw new Error(`Failed to fetch quota: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchBillingStatus(getToken: TokenGetter): Promise<BillingStatus> {
+  const res = await fetch(`${BASE}/billing/status`, {
+    headers: await authHeaders(getToken),
+  });
+  if (!res.ok) throw new Error(`Failed to fetch billing status: ${res.status}`);
+  return res.json();
+}
+
+export async function activatePayPalSubscription(
+  subscriptionId: string,
+  getToken: TokenGetter,
+): Promise<BillingStatus> {
+  const res = await fetch(`${BASE}/billing/paypal/activate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(await authHeaders(getToken)),
+    },
+    body: JSON.stringify({ subscription_id: subscriptionId }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail ?? `Activation failed: ${res.status}`);
+  }
   return res.json();
 }
 

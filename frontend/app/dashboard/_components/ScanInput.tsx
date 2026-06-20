@@ -7,9 +7,10 @@ interface ScanInputProps {
   quota: QuotaStatus | null;
   onChange: (value: string) => void;
   onScan: () => void;
+  onUpgrade?: () => void;
 }
 
-export function ScanInput({ query, status, quota, onChange, onScan }: ScanInputProps) {
+export function ScanInput({ query, status, quota, onChange, onScan, onUpgrade }: ScanInputProps) {
   const exhausted = quota !== null && quota.remaining === 0;
   const isLoading = status === "loading";
   const disabled = isLoading || !query.trim() || exhausted;
@@ -50,7 +51,7 @@ export function ScanInput({ query, status, quota, onChange, onScan }: ScanInputP
       {exhausted && !quota?.is_paid && (
         <p className="mt-2 text-xs text-[#94A3B8]">
           You&apos;ve used your free scan.{" "}
-          <span className="text-[#6366F1] cursor-pointer hover:underline">Upgrade to Pro</span>
+          <button type="button" onClick={onUpgrade} className="text-[#6366F1] cursor-pointer hover:underline">Upgrade to Pro</button>
           {" "}for 50 scans/month.
         </p>
       )}

@@ -3,6 +3,9 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.engine import Engine
 
+from app.api.billing import gate_themes_for_plan
+from app.api.users import user_is_paid
+from app.api.clerk_auth import OptionalClerkId
 from app.api.models import (
     ScanCreated,
     ScanReport,
@@ -14,7 +17,7 @@ from app.api.models import (
 )
 from app.api.runner import start_scan
 from app.api.store import ScanStore
-from app.api.quota import check_quota, increment_quota, get_client_ip
+from app.api.quota import account_key_for, check_quota, increment_quota, get_client_ip
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
@@ -33,17 +36,19 @@ def get_engine() -> Engine:
 def submit_scan(
     request: Request,
     body: ScanRequest,
+    clerk_id: OptionalClerkId = None,
     store: ScanStore = Depends(get_store),
     engine: Engine = Depends(get_engine),
 ) -> ScanCreated:
     ip = get_client_ip(request)
-    check_quota(ip, engine)  # raises 429 if exceeded
+    key = account_key_for(request, clerk_id)
+    check_quota(key, engine, clerk_id)
 
     scan_id = str(uuid.uuid4())
     store.create(scan_id, body.query)
     start_scan(scan_id, body.query, body.post_limit, store, engine, ip=ip)
 
-    increment_quota(ip, engine)
+    increment_quota(key, engine)
     return ScanCreated(scan_id=scan_id)
 
 
@@ -66,7 +71,9 @@ def get_status(
 @router.get("/{scan_id}/report", response_model=ScanReport)
 def get_report(
     scan_id: str,
+    clerk_id: OptionalClerkId = None,
     store: ScanStore = Depends(get_store),
+    engine: Engine = Depends(get_engine),
 ) -> ScanReport:
     job = store.get(scan_id)
     if not job:
@@ -75,6 +82,9 @@ def get_report(
         raise HTTPException(status_code=409, detail="Scan still running.")
     if job.status == ScanStatus.failed:
         raise HTTPException(status_code=422, detail=job.error or "Scan failed.")
+
+    is_paid = bool(clerk_id and user_is_paid(engine, clerk_id))
+    visible = gate_themes_for_plan(job.result, is_paid)
 
     themes = [
         ThemeOut(
@@ -94,6 +104,6 @@ def get_report(
                 for q in t.get("quotes", [])
             ],
         )
-        for t in job.result
+        for t in visible
     ]
     return ScanReport(scan_id=job.scan_id, query=job.query, themes=themes, from_cache=job.from_cache)

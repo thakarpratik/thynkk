@@ -9,7 +9,11 @@ const LockIcon = () => (
   </svg>
 );
 
-export function PaywallBanner() {
+interface PaywallBannerProps {
+  onUpgrade?: () => void;
+}
+
+export function PaywallBanner({ onUpgrade }: PaywallBannerProps) {
   return (
     <div
       className="bg-[#0E1223] border border-[#6366F1]/50 rounded-lg p-6 text-center"
@@ -22,7 +26,10 @@ export function PaywallBanner() {
       <p className="text-sm text-[#94A3B8] mb-4">
         Upgrade to Pro to unlock the full report, exports, and weekly digests.
       </p>
-      <button className="bg-[#6366F1] hover:bg-[#4F46E5] text-white px-6 py-2.5 rounded-md font-medium text-sm transition-colors cursor-pointer">
+      <button
+        onClick={onUpgrade}
+        className="bg-[#6366F1] hover:bg-[#4F46E5] text-white px-6 py-2.5 rounded-md font-medium text-sm transition-colors cursor-pointer"
+      >
         Unlock full report — $19/mo
       </button>
       <p className="text-xs text-[#94A3B8] mt-2">Cancel anytime</p>

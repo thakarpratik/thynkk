@@ -1,9 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import type { Mode, ScanStatus, Theme, TrendItem, TrendRadarMeta } from "./_types";
 import { FREE_LIMIT } from "./_data/mock";
-import { submitScan, pollStatus, fetchReport, fetchTrends, fetchQuota, type Report, type QuotaStatus } from "./_lib/api";
+import {
+  submitScan,
+  pollStatus,
+  fetchReport,
+  fetchTrends,
+  fetchQuota,
+  fetchBillingStatus,
+  activatePayPalSubscription,
+} from "./_lib/api";
 import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
 import { ModeToggle } from "./_components/ModeToggle";
@@ -16,13 +25,18 @@ import { ThemeCard } from "./_components/ThemeCard";
 import { ThemePanel } from "./_components/ThemePanel";
 import { UpgradeStrip } from "./_components/UpgradeStrip";
 import { TrendRadar } from "./_components/TrendRadar";
+import { UpgradeModal } from "./_components/UpgradeModal";
 
-const isPro = false;
 const POLL_INTERVAL_MS = 3000;
 
 type RadarStatus = "idle" | "loading" | "done" | "error" | "scanning";
 
 export default function Dashboard() {
+  const { getToken } = useAuth();
+  const [isPro, setIsPro] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeError, setUpgradeError] = useState("");
+
   const [mode, setMode] = useState<Mode>("scanner");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ScanStatus>("idle");
@@ -35,14 +49,33 @@ export default function Dashboard() {
   const [filter, setFilter] = useState<FilterVerdict>("all");
   const [scanTime, setScanTime] = useState<Date | null>(null);
 
-  const [quota, setQuota] = useState<QuotaStatus | null>(null);
+  const [quota, setQuota] = useState<Awaited<ReturnType<typeof fetchQuota>> | null>(null);
   const [trends, setTrends] = useState<TrendItem[]>([]);
   const [trendMeta, setTrendMeta] = useState<TrendRadarMeta | null>(null);
   const [radarStatus, setRadarStatus] = useState<RadarStatus>("idle");
   const [radarError, setRadarError] = useState("");
-  useEffect(() => {
-    fetchQuota().then(setQuota).catch(() => null);
+
+  const openUpgrade = useCallback(() => {
+    setUpgradeError("");
+    setUpgradeOpen(true);
   }, []);
+
+  const refreshAccount = useCallback(async () => {
+    try {
+      const [billing, q] = await Promise.all([
+        fetchBillingStatus(getToken),
+        fetchQuota(getToken),
+      ]);
+      setIsPro(billing.is_paid);
+      setQuota(q);
+    } catch {
+      fetchQuota(getToken).then(setQuota).catch(() => null);
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+    refreshAccount();
+  }, [refreshAccount]);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -58,12 +91,12 @@ export default function Dashboard() {
       try {
         const s = await pollStatus(scanId);
         if (s.status === "done") {
-          const report = await fetchReport(scanId);
+          const report = await fetchReport(scanId, getToken);
           setThemes(report.themes);
           setFromCache(report.fromCache);
           setScanTime(new Date());
           setStatus("done");
-          fetchQuota().then(setQuota).catch(() => null);
+          refreshAccount();
         } else if (s.status === "failed") {
           setErrorMessage(s.error ?? "Scan failed.");
           setStatus("error");
@@ -75,7 +108,7 @@ export default function Dashboard() {
         setStatus("error");
       }
     }, POLL_INTERVAL_MS);
-  }, []);
+  }, [getToken, refreshAccount]);
 
   const loadTrends = useCallback(async (refresh = false) => {
     setRadarStatus("loading");
@@ -116,9 +149,9 @@ export default function Dashboard() {
     setFilter("all");
     setSort("demand");
     stopPolling();
-    submitScan(q).then(poll).catch((e: unknown) => {
+    submitScan(q, getToken).then(poll).catch((e: unknown) => {
       if (e instanceof Error && e.message === "quota_exceeded") {
-        fetchQuota().then(setQuota).catch(() => null);
+        refreshAccount();
         setErrorMessage("Scan limit reached. Upgrade to Pro for 50 scans/month.");
       } else {
         setErrorMessage("Could not reach the API. Is the server running?");
@@ -141,16 +174,28 @@ export default function Dashboard() {
     setSort("demand");
 
     try {
-      const scanId = await submitScan(query);
+      const scanId = await submitScan(query, getToken);
       poll(scanId);
     } catch (e: unknown) {
       if (e instanceof Error && e.message === "quota_exceeded") {
-        fetchQuota().then(setQuota).catch(() => null);
+        refreshAccount();
         setErrorMessage("Scan limit reached. Upgrade to Pro for 50 scans/month.");
       } else {
         setErrorMessage("Could not reach the API. Is the server running?");
       }
       setStatus("error");
+    }
+  };
+
+  const handlePayPalSuccess = async (subscriptionId: string) => {
+    try {
+      await activatePayPalSubscription(subscriptionId, getToken);
+      await refreshAccount();
+      setIsPro(true);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not activate subscription.";
+      setUpgradeError(msg);
+      throw e;
     }
   };
 
@@ -190,6 +235,7 @@ export default function Dashboard() {
             quota={quota}
             onChange={setQuery}
             onScan={handleScan}
+            onUpgrade={openUpgrade}
           />
         )}
 
@@ -228,7 +274,7 @@ export default function Dashboard() {
             </div>
 
             {!isPro && lockedCount > 0 && (
-              <UpgradeStrip lockedCount={lockedCount} />
+              <UpgradeStrip lockedCount={lockedCount} onUpgrade={openUpgrade} />
             )}
           </div>
         )}
@@ -243,6 +289,7 @@ export default function Dashboard() {
             lockedCount={trendLockedCount}
             onScan={() => loadTrends()}
             onRefresh={() => loadTrends(true)}
+            onUpgrade={openUpgrade}
           />
         )}
 
@@ -259,6 +306,13 @@ export default function Dashboard() {
         rank={(activeTheme?.index ?? 0) + 1}
         isPro={isPro}
         onClose={() => setActiveTheme(null)}
+      />
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        onSuccess={handlePayPalSuccess}
+        error={upgradeError}
       />
 
       <SiteFooter />

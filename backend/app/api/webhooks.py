@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from app.api.email_guard import check_email_domain
+from app.api.users import ensure_users_table
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -59,20 +60,6 @@ def _verify_svix_signature(
 def _get_engine() -> Engine:
     from app.main import db_engine
     return db_engine
-
-
-def _ensure_users_table(engine: Engine) -> None:
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS users (
-                id              TEXT PRIMARY KEY,
-                clerk_id        TEXT NOT NULL UNIQUE,
-                email           TEXT NOT NULL,
-                is_paid         BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-                deleted_at      TIMESTAMPTZ
-            )
-        """))
 
 
 @router.post("/clerk")
@@ -122,7 +109,7 @@ async def clerk_webhook(
             return {"status": "blocked", "reason": e.detail}
 
         engine = _get_engine()
-        _ensure_users_table(engine)
+        ensure_users_table(engine)
 
         import uuid
         with engine.begin() as conn:

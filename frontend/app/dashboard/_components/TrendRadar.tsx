@@ -16,6 +16,7 @@ interface TrendRadarProps {
   lockedCount: number;
   onRefresh: () => void;
   onScan: () => void;
+  onUpgrade?: () => void;
 }
 
 type TrendSort = "growth" | "posts";
@@ -196,7 +197,7 @@ function LoadingState() {
   );
 }
 
-export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, lockedCount, onRefresh, onScan }: TrendRadarProps) {
+export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, lockedCount, onRefresh, onScan, onUpgrade }: TrendRadarProps) {
   const [sort, setSort] = useState<TrendSort>("growth");
   const [activeTrend, setActiveTrend] = useState<{ trend: TrendItem; index: number } | null>(null);
 
@@ -298,7 +299,7 @@ export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, locke
             ))}
           </div>
           {!isPro && lockedCount > 0 && (
-            <UpgradeStrip lockedCount={lockedCount} noun="trending niches" />
+            <UpgradeStrip lockedCount={lockedCount} noun="trending niches" onUpgrade={onUpgrade} />
           )}
         </>
       )}

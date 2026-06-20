@@ -39,12 +39,14 @@ from app.api.radar import router as radar_router
 from app.api.quota import router as quota_router
 from app.api.webhooks import router as webhooks_router
 from app.api.admin import router as admin_router
+from app.api.billing import router as billing_router
 
 app.include_router(scans_router)
 app.include_router(radar_router)
 app.include_router(quota_router)
 app.include_router(webhooks_router)
 app.include_router(admin_router)
+app.include_router(billing_router)
 
 
 @app.get("/health")
