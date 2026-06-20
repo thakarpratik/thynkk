@@ -14,8 +14,14 @@ import {
   fetchBillingStatus,
   activatePayPalSubscription,
 } from "./_lib/api";
-import { SiteNav } from "../_components/SiteNav";
-import { SiteFooter } from "../_components/SiteFooter";
+import {
+  loadScanHistory,
+  saveScanToHistory,
+  clearScanHistory,
+  type ScanHistoryEntry,
+} from "./_lib/scan-history";
+import { downloadThemesCsv } from "./_lib/export-csv";
+import { DashboardNav } from "./_components/DashboardNav";
 import { ModeToggle } from "./_components/ModeToggle";
 import { ScanInput } from "./_components/ScanInput";
 import { ScanningState } from "./_components/ScanningState";
@@ -27,6 +33,7 @@ import { ThemePanel } from "./_components/ThemePanel";
 import { UpgradeStrip } from "./_components/UpgradeStrip";
 import { TrendRadar } from "./_components/TrendRadar";
 import { UpgradeModal } from "./_components/UpgradeModal";
+import { ScanHistory } from "./_components/ScanHistory";
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -39,23 +46,30 @@ export default function Dashboard() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeError, setUpgradeError] = useState("");
 
-  const [mode, setMode] = useState<Mode>("scanner");
+  const [mode, setMode] = useState<Mode>(() =>
+    searchParams.get("mode") === "radar" ? "radar" : "scanner"
+  );
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [scannedQuery, setScannedQuery] = useState("");
   const [themes, setThemes] = useState<Theme[]>([]);
+  const [totalThemes, setTotalThemes] = useState(0);
   const [fromCache, setFromCache] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [activeTheme, setActiveTheme] = useState<{ theme: Theme; index: number } | null>(null);
   const [sort, setSort] = useState<SortKey>("demand");
   const [filter, setFilter] = useState<FilterVerdict>("all");
   const [scanTime, setScanTime] = useState<Date | null>(null);
+  const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([]);
 
   const [quota, setQuota] = useState<Awaited<ReturnType<typeof fetchQuota>> | null>(null);
   const [trends, setTrends] = useState<TrendItem[]>([]);
   const [trendMeta, setTrendMeta] = useState<TrendRadarMeta | null>(null);
   const [radarStatus, setRadarStatus] = useState<RadarStatus>("idle");
   const [radarError, setRadarError] = useState("");
+
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const radarBootstrapped = useRef(false);
 
   const openUpgrade = useCallback(() => {
     setUpgradeError("");
@@ -77,15 +91,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     refreshAccount();
+    setScanHistory(loadScanHistory());
   }, [refreshAccount]);
 
   useEffect(() => {
     if (searchParams.get("upgrade") === "true") {
       openUpgrade();
     }
+    if (searchParams.get("mode") === "radar") {
+      setMode("radar");
+    }
   }, [searchParams, openUpgrade]);
-
-  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopPolling = () => {
     if (pollTimer.current) {
@@ -93,30 +109,6 @@ export default function Dashboard() {
       pollTimer.current = null;
     }
   };
-
-  const poll = useCallback((scanId: string) => {
-    pollTimer.current = setTimeout(async () => {
-      try {
-        const s = await pollStatus(scanId);
-        if (s.status === "done") {
-          const report = await fetchReport(scanId, getToken);
-          setThemes(report.themes);
-          setFromCache(report.fromCache);
-          setScanTime(new Date());
-          setStatus("done");
-          refreshAccount();
-        } else if (s.status === "failed") {
-          setErrorMessage(s.error ?? "Scan failed.");
-          setStatus("error");
-        } else {
-          poll(scanId);
-        }
-      } catch {
-        setErrorMessage("Lost connection to the API. Is the server running?");
-        setStatus("error");
-      }
-    }, POLL_INTERVAL_MS);
-  }, [getToken, refreshAccount]);
 
   const loadTrends = useCallback(async (refresh = false) => {
     setRadarStatus("loading");
@@ -145,11 +137,58 @@ export default function Dashboard() {
     }
   }, []);
 
-  const handleQuickScan = (q: string) => {
+  useEffect(() => {
+    if (mode === "radar" && radarStatus === "idle" && !radarBootstrapped.current) {
+      radarBootstrapped.current = true;
+      loadTrends();
+    }
+  }, [mode, radarStatus, loadTrends]);
+
+  const persistScan = useCallback((q: string, reportThemes: Theme[], total: number, cached: boolean) => {
+    const top = reportThemes[0]?.name ?? "—";
+    const updated = saveScanToHistory({
+      query: q,
+      themeCount: reportThemes.length,
+      totalThemes: total,
+      topTheme: top,
+      fromCache: cached,
+      themes: reportThemes,
+    });
+    if (updated) setScanHistory(updated);
+  }, []);
+
+  const poll = useCallback((scanId: string) => {
+    pollTimer.current = setTimeout(async () => {
+      try {
+        const s = await pollStatus(scanId);
+        if (s.status === "done") {
+          const report = await fetchReport(scanId, getToken);
+          setThemes(report.themes);
+          setTotalThemes(report.totalThemes);
+          setFromCache(report.fromCache);
+          setScanTime(new Date());
+          setStatus("done");
+          persistScan(s.query, report.themes, report.totalThemes, report.fromCache);
+          refreshAccount();
+        } else if (s.status === "failed") {
+          setErrorMessage(s.error ?? "Scan failed. Try a different niche or subreddit.");
+          setStatus("error");
+        } else {
+          poll(scanId);
+        }
+      } catch {
+        setErrorMessage("Connection lost. Check your network and try again.");
+        setStatus("error");
+      }
+    }, POLL_INTERVAL_MS);
+  }, [getToken, refreshAccount, persistScan]);
+
+  const beginScan = (q: string) => {
     setQuery(q);
     setStatus("loading");
     setScannedQuery(q);
     setThemes([]);
+    setTotalThemes(0);
     setFromCache(false);
     setScanTime(null);
     setErrorMessage("");
@@ -162,7 +201,7 @@ export default function Dashboard() {
         refreshAccount();
         setErrorMessage("Scan limit reached. Upgrade to Pro for 50 scans/month.");
       } else {
-        setErrorMessage("Could not reach the API. Is the server running?");
+        setErrorMessage("Could not start scan. Please try again in a moment.");
       }
       setStatus("error");
     });
@@ -170,30 +209,10 @@ export default function Dashboard() {
 
   const handleScan = async () => {
     if (!query.trim()) return;
-    stopPolling();
-    setStatus("loading");
-    setScannedQuery(query);
-    setThemes([]);
-    setFromCache(false);
-    setScanTime(null);
-    setErrorMessage("");
-    setActiveTheme(null);
-    setFilter("all");
-    setSort("demand");
-
-    try {
-      const scanId = await submitScan(query, getToken);
-      poll(scanId);
-    } catch (e: unknown) {
-      if (e instanceof Error && e.message === "quota_exceeded") {
-        refreshAccount();
-        setErrorMessage("Scan limit reached. Upgrade to Pro for 50 scans/month.");
-      } else {
-        setErrorMessage("Could not reach the API. Is the server running?");
-      }
-      setStatus("error");
-    }
+    beginScan(query);
   };
+
+  const handleQuickScan = (q: string) => beginScan(q);
 
   const handlePayPalSuccess = async (subscriptionId: string) => {
     try {
@@ -209,8 +228,10 @@ export default function Dashboard() {
 
   const handleModeChange = (next: Mode) => {
     setMode(next);
-    setStatus("idle");
-    stopPolling();
+    if (next === "radar" && radarStatus === "idle" && !radarBootstrapped.current) {
+      radarBootstrapped.current = true;
+      loadTrends();
+    }
   };
 
   const handleRetry = () => {
@@ -218,8 +239,29 @@ export default function Dashboard() {
     setErrorMessage("");
   };
 
-  const lockedCount = isPro ? 0 : Math.max(0, themes.length - FREE_LIMIT);
-  const trendLockedCount = isPro ? 0 : Math.max(0, trends.length - FREE_LIMIT);
+  const handleRestore = (entry: ScanHistoryEntry) => {
+    setQuery(entry.query);
+    setScannedQuery(entry.query);
+    setThemes(entry.themes);
+    setTotalThemes(entry.totalThemes);
+    setFromCache(entry.fromCache);
+    setScanTime(new Date(entry.scannedAt));
+    setStatus("done");
+    setActiveTheme(null);
+    setMode("scanner");
+  };
+
+  const handleClearHistory = () => {
+    clearScanHistory();
+    setScanHistory([]);
+  };
+
+  const handleExport = () => {
+    if (themes.length === 0) return;
+    downloadThemesCsv(scannedQuery, themes);
+  };
+
+  const hiddenThemeCount = !isPro ? Math.max(0, totalThemes - themes.length) : 0;
 
   const sortedFilteredThemes = [...themes]
     .filter((t) => filter === "all" || t.verdict === filter)
@@ -231,9 +273,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-dvh bg-[#020617] text-[#F8FAFC]">
-      <SiteNav />
+      <DashboardNav isPro={isPro} quota={quota} onUpgrade={openUpgrade} />
 
-      <main className="max-w-4xl mx-auto px-6 pt-24 pb-16">
+      <main className="max-w-4xl mx-auto px-6 pt-20 pb-16">
         <ModeToggle mode={mode} onChange={handleModeChange} />
 
         {mode === "scanner" && (
@@ -247,9 +289,9 @@ export default function Dashboard() {
           />
         )}
 
-        {status === "loading" && <ScanningState />}
+        {mode === "scanner" && status === "loading" && <ScanningState />}
 
-        {status === "error" && (
+        {mode === "scanner" && status === "error" && (
           <ErrorState message={errorMessage} onRetry={handleRetry} />
         )}
 
@@ -257,15 +299,16 @@ export default function Dashboard() {
           <div>
             <ReportHeader
               query={scannedQuery}
-              totalCount={themes.length}
+              visibleCount={themes.length}
+              totalThemes={totalThemes}
               isPro={isPro}
-              freeLimit={FREE_LIMIT}
               fromCache={fromCache}
               scanTime={scanTime}
               sort={sort}
               filter={filter}
               onSortChange={setSort}
               onFilterChange={setFilter}
+              onExport={isPro ? handleExport : undefined}
             />
 
             <div className="space-y-4">
@@ -274,15 +317,13 @@ export default function Dashboard() {
                   key={theme.name}
                   theme={theme}
                   index={i}
-                  isPro={isPro}
-                  variant={isPro || i < FREE_LIMIT ? "full" : "shallow"}
                   onClick={() => setActiveTheme({ theme, index: i })}
                 />
               ))}
             </div>
 
-            {!isPro && lockedCount > 0 && (
-              <UpgradeStrip lockedCount={lockedCount} onUpgrade={openUpgrade} />
+            {!isPro && (
+              <UpgradeStrip variant="scanner" hiddenCount={hiddenThemeCount} onUpgrade={openUpgrade} />
             )}
           </div>
         )}
@@ -294,7 +335,7 @@ export default function Dashboard() {
             radarStatus={radarStatus}
             radarError={radarError}
             isPro={isPro}
-            lockedCount={trendLockedCount}
+            freeLimit={FREE_LIMIT}
             onScan={() => loadTrends()}
             onRefresh={() => loadTrends(true)}
             onUpgrade={openUpgrade}
@@ -303,9 +344,22 @@ export default function Dashboard() {
 
         {mode === "scanner" && status === "idle" && (
           <IdleState
+            history={scanHistory}
             onScan={handleQuickScan}
             onSwitchRadar={() => handleModeChange("radar")}
+            onRestore={handleRestore}
+            onClearHistory={handleClearHistory}
           />
+        )}
+
+        {mode === "scanner" && status === "done" && scanHistory.length > 0 && (
+          <div className="mt-10 pt-8 border-t border-[#1E293B]">
+            <ScanHistory
+              history={scanHistory.filter((h) => h.query !== scannedQuery)}
+              onRestore={handleRestore}
+              onClear={handleClearHistory}
+            />
+          </div>
         )}
       </main>
 
@@ -322,8 +376,6 @@ export default function Dashboard() {
         onSuccess={handlePayPalSuccess}
         error={upgradeError}
       />
-
-      <SiteFooter />
     </div>
   );
 }

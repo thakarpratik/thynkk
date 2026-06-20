@@ -73,4 +73,5 @@ class ScanReport(BaseModel):
     scan_id: str
     query: str
     themes: list[ThemeOut]
+    total_themes: int = 0
     from_cache: bool = False

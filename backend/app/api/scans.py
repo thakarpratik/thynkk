@@ -84,6 +84,7 @@ def get_report(
         raise HTTPException(status_code=422, detail=job.error or "Scan failed.")
 
     is_paid = bool(clerk_id and user_is_paid(engine, clerk_id))
+    total_themes = len(job.result)
     visible = gate_themes_for_plan(job.result, is_paid)
 
     themes = [
@@ -106,4 +107,10 @@ def get_report(
         )
         for t in visible
     ]
-    return ScanReport(scan_id=job.scan_id, query=job.query, themes=themes, from_cache=job.from_cache)
+    return ScanReport(
+        scan_id=job.scan_id,
+        query=job.query,
+        themes=themes,
+        total_themes=total_themes,
+        from_cache=job.from_cache,
+    )

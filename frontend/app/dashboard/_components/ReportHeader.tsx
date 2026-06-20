@@ -7,15 +7,16 @@ export type FilterVerdict = "all" | "Strong signal" | "Weak signal" | "Already c
 
 interface ReportHeaderProps {
   query: string;
-  totalCount: number;
+  visibleCount: number;
+  totalThemes: number;
   isPro: boolean;
-  freeLimit: number;
   fromCache?: boolean;
   scanTime?: Date | null;
   sort: SortKey;
   filter: FilterVerdict;
   onSortChange: (s: SortKey) => void;
   onFilterChange: (f: FilterVerdict) => void;
+  onExport?: () => void;
 }
 
 function formatScanTime(date: Date): string {
@@ -48,8 +49,8 @@ const VERDICT_DOT: Record<string, string> = {
 };
 
 export function ReportHeader({
-  query, totalCount, isPro, freeLimit, fromCache, scanTime,
-  sort, filter, onSortChange, onFilterChange,
+  query, visibleCount, totalThemes, isPro, fromCache, scanTime,
+  sort, filter, onSortChange, onFilterChange, onExport,
 }: ReportHeaderProps) {
   return (
     <div className="mb-5 space-y-3">
@@ -61,7 +62,11 @@ export function ReportHeader({
             <span className="text-[#94A3B8] font-normal text-sm ml-2">· {query}</span>
           </h2>
           <p className="text-xs text-[#94A3B8] mt-0.5 flex items-center gap-2 flex-wrap">
-            <span>{totalCount} themes found · {isPro ? "Full report" : `Showing top ${freeLimit} free`}</span>
+            <span>
+              {isPro
+                ? `${totalThemes} themes · Full report`
+                : `${totalThemes} themes found · Showing top ${visibleCount}`}
+            </span>
             {fromCache && (
               <span className="inline-flex items-center gap-1 text-[#22C55E] font-mono">
                 <span className="w-1 h-1 rounded-full bg-[#22C55E]" />
@@ -79,8 +84,12 @@ export function ReportHeader({
             )}
           </p>
         </div>
-        {isPro && (
-          <button className="shrink-0 text-xs border border-[#1E293B] hover:border-[#6366F1] text-[#94A3B8] hover:text-white px-3 py-1.5 rounded-md font-mono transition-all cursor-pointer">
+        {isPro && onExport && (
+          <button
+            type="button"
+            onClick={onExport}
+            className="shrink-0 text-xs border border-[#1E293B] hover:border-[#6366F1] text-[#94A3B8] hover:text-white px-3 py-1.5 rounded-md font-mono transition-all cursor-pointer"
+          >
             Export CSV
           </button>
         )}

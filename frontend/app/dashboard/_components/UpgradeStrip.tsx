@@ -1,21 +1,32 @@
 interface UpgradeStripProps {
-  lockedCount: number;
-  noun?: string;
+  variant: "scanner" | "radar";
+  hiddenCount?: number;
   onUpgrade?: () => void;
 }
 
-export function UpgradeStrip({ lockedCount, noun = "pain points", onUpgrade }: UpgradeStripProps) {
+export function UpgradeStrip({ variant, hiddenCount = 0, onUpgrade }: UpgradeStripProps) {
+  const title =
+    hiddenCount > 0
+      ? variant === "scanner"
+        ? `${hiddenCount} more theme${hiddenCount === 1 ? "" : "s"} in full report`
+        : `${hiddenCount} more niche${hiddenCount === 1 ? "" : "s"} in full feed`
+      : variant === "scanner"
+        ? "Unlock the full report"
+        : "Unlock the full Trend Radar feed";
+
+  const subtitle =
+    variant === "scanner"
+      ? "Pro: all themes, demand scores, CSV export, 50 scans/month"
+      : "Pro: every trending niche, full analysis, 50 scans/month";
+
   return (
-    <div className="flex items-center justify-between gap-4 px-5 py-4 bg-[#0E1223] border border-[#6366F1]/30 rounded-lg mt-2">
+    <div className="flex items-center justify-between gap-4 px-5 py-4 bg-[#0E1223] border border-[#6366F1]/30 rounded-lg mt-4">
       <div>
-        <p className="text-sm font-mono font-medium text-[#F8FAFC]">
-          {lockedCount} more {noun} locked
-        </p>
-        <p className="text-xs text-[#94A3B8] mt-0.5">
-          Plus: exports, saved searches, weekly digest
-        </p>
+        <p className="text-sm font-mono font-medium text-[#F8FAFC]">{title}</p>
+        <p className="text-xs text-[#94A3B8] mt-0.5">{subtitle}</p>
       </div>
       <button
+        type="button"
         onClick={onUpgrade}
         className="shrink-0 bg-[#6366F1] hover:bg-[#4F46E5] text-white px-5 py-2 rounded-md font-medium text-sm font-mono transition-colors cursor-pointer whitespace-nowrap"
       >

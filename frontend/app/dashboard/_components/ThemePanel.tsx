@@ -97,13 +97,13 @@ function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: num
 
         {/* Score tiles */}
         <div className="grid grid-cols-3 gap-3">
-          <ScoreTile label="Demand" blurred={!isPro}>
+          <ScoreTile label="Demand" blurred={false}>
             <DemandBadge score={theme.demand} />
           </ScoreTile>
-          <ScoreTile label="Severity" blurred={!isPro}>
+          <ScoreTile label="Severity" blurred={false}>
             <SeverityBar score={theme.severity} />
           </ScoreTile>
-          <ScoreTile label="Mentions" blurred={!isPro}>
+          <ScoreTile label="Mentions" blurred={false}>
             <span className="font-mono text-lg font-bold text-[#94A3B8]">{theme.mentions}</span>
           </ScoreTile>
         </div>

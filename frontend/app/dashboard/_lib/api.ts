@@ -37,11 +37,13 @@ interface ReportResponse {
   scan_id: string;
   query: string;
   themes: ApiTheme[];
+  total_themes: number;
   from_cache: boolean;
 }
 
 export interface Report {
   themes: Theme[];
+  totalThemes: number;
   fromCache: boolean;
 }
 
@@ -128,6 +130,7 @@ export async function fetchReport(scanId: string, getToken?: TokenGetter): Promi
   const data: ReportResponse = await res.json();
   return {
     themes: data.themes.map(toTheme),
+    totalThemes: data.total_themes ?? data.themes.length,
     fromCache: data.from_cache ?? false,
   };
 }

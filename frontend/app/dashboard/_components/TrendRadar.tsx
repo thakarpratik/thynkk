@@ -13,7 +13,7 @@ interface TrendRadarProps {
   radarStatus: RadarStatus;
   radarError: string;
   isPro: boolean;
-  lockedCount: number;
+  freeLimit: number;
   onRefresh: () => void;
   onScan: () => void;
   onUpgrade?: () => void;
@@ -27,12 +27,6 @@ const TAG_STYLES: Record<TrendItem["tag"], string> = {
   NEW:    "bg-[#22C55E]/15 text-[#22C55E] border-[#22C55E]/30",
 };
 
-const BLURRED: React.CSSProperties = {
-  filter: "blur(5px)",
-  userSelect: "none",
-  pointerEvents: "none",
-};
-
 function formatAsOf(date: Date): string {
   const diffMs = Date.now() - date.getTime();
   const diffH = Math.floor(diffMs / 3600000);
@@ -44,11 +38,9 @@ function formatAsOf(date: Date): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function TrendRow({ trend, index, shallow, isPro, onClick }: {
+function TrendRow({ trend, index, onClick }: {
   trend: TrendItem;
   index: number;
-  shallow: boolean;
-  isPro: boolean;
   onClick: () => void;
 }) {
   return (
@@ -63,28 +55,18 @@ function TrendRow({ trend, index, shallow, isPro, onClick }: {
         <div className="flex items-start gap-3 min-w-0">
           <span className="font-mono text-xs text-[#94A3B8] pt-0.5 shrink-0">#{index + 1}</span>
           <div className="min-w-0">
-            <h3 className={`font-mono font-semibold text-sm ${shallow ? "text-[#94A3B8]" : "text-[#F8FAFC]"}`}>
+            <h3 className="font-mono font-semibold text-sm text-[#F8FAFC]">
               {trend.niche}
             </h3>
-            {!shallow && (
-              <>
-                <p className="text-xs text-[#94A3B8] mt-0.5">{trend.subreddit} · {trend.posts.toLocaleString()} posts</p>
-                {trend.description && (
-                  <p className="text-xs text-[#475569] mt-1 leading-relaxed">{trend.description}</p>
-                )}
-              </>
-            )}
-            {shallow && (
-              <p className="text-xs text-[#475569] mt-0.5 font-mono">Growth and signal locked</p>
+            <p className="text-xs text-[#94A3B8] mt-0.5">{trend.subreddit} · {trend.posts.toLocaleString()} posts</p>
+            {trend.description && (
+              <p className="text-xs text-[#475569] mt-1 leading-relaxed">{trend.description}</p>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <div
-            className="flex items-center gap-3"
-            style={!isPro ? BLURRED : undefined}
-          >
+          <div className="flex items-center gap-3">
             <span className="font-mono text-lg font-bold text-[#22C55E]">{trend.growth}</span>
             <span className={`text-[10px] px-2 py-0.5 rounded font-mono border ${TAG_STYLES[trend.tag]}`}>
               {trend.tag}
@@ -197,13 +179,15 @@ function LoadingState() {
   );
 }
 
-export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, lockedCount, onRefresh, onScan, onUpgrade }: TrendRadarProps) {
+export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, freeLimit, onRefresh, onScan, onUpgrade }: TrendRadarProps) {
   const [sort, setSort] = useState<TrendSort>("growth");
   const [activeTrend, setActiveTrend] = useState<{ trend: TrendItem; index: number } | null>(null);
 
   const sorted = [...trends].sort((a, b) =>
     sort === "growth" ? b.growthPct - a.growthPct : b.posts - a.posts
   );
+  const displayTrends = isPro ? sorted : sorted.slice(0, freeLimit);
+  const hiddenTrendCount = isPro ? 0 : Math.max(0, trends.length - freeLimit);
 
   const isLoading = radarStatus === "loading" || radarStatus === "scanning";
   const isStale = meta ? Date.now() - meta.asOf.getTime() > 86400000 * 2 : false;
@@ -287,19 +271,17 @@ export function TrendRadar({ trends, meta, radarStatus, radarError, isPro, locke
       {radarStatus === "done" && (
         <>
           <div className="space-y-3">
-            {sorted.map((trend, i) => (
+            {displayTrends.map((trend, i) => (
               <TrendRow
                 key={trend.niche}
                 trend={trend}
                 index={i}
-                isPro={isPro}
-                shallow={!isPro && i >= 3}
                 onClick={() => setActiveTrend({ trend, index: i })}
               />
             ))}
           </div>
-          {!isPro && lockedCount > 0 && (
-            <UpgradeStrip lockedCount={lockedCount} noun="trending niches" onUpgrade={onUpgrade} />
+          {!isPro && (hiddenTrendCount > 0 || trends.length > 0) && (
+            <UpgradeStrip variant="radar" hiddenCount={hiddenTrendCount} onUpgrade={onUpgrade} />
           )}
         </>
       )}
