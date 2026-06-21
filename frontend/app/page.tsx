@@ -6,12 +6,12 @@ import { PlanCTA } from "./_components/PlanCTA";
 import { LiveActivity } from "./_components/LiveActivity";
 
 export const metadata: Metadata = {
-  title: "Thynkk — Thynkk before you build",
-  description: "Turn Reddit into a market research engine. Surface pain points, validate ideas, and discover trending niches — before your competitors do. Free to try.",
+  title: "Thynkk — Stop building what nobody wants",
+  description: "Thynkk turns real market signals into your next winning idea. Surface what people struggle with, ask for, and are willing to pay for — before you write a line of code.",
   alternates: { canonical: "https://thynkk.co" },
   openGraph: {
-    title: "Thynkk — Thynkk before you build",
-    description: "Turn Reddit into a market research engine. Surface pain points, validate ideas, and discover trending niches — before your competitors do.",
+    title: "Thynkk — Stop building what nobody wants",
+    description: "Thynkk turns real market signals into your next winning idea. Surface what people struggle with, ask for, and are willing to pay for.",
     url: "https://thynkk.co",
   },
 };
@@ -26,12 +26,11 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center">
           <LiveActivity />
           <h1 className="font-mono text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Thynkk before<br />
-            <span className="text-gradient">you build.</span>
+            Stop building what<br />
+            <span className="text-gradient">nobody wants.</span>
           </h1>
           <p className="text-xl text-[#94A3B8] max-w-2xl mx-auto mb-10 leading-relaxed">
-            Thynkk scans Reddit to surface what people are struggling with, asking for,
-            and willing to pay for — ranked by demand, backed by real evidence.
+            Thynkk turns real market signals into your next winning idea.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
             <Link href="/dashboard" className="bg-[#6366F1] hover:bg-[#4F46E5] text-white px-8 py-3.5 rounded-md font-semibold transition-all" style={{ boxShadow: "0 0 24px rgba(99,102,241,0.35)" }}>
