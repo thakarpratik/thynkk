@@ -42,11 +42,26 @@ function FieldRow({ name, desc }: { name: string; desc: string }) {
 }
 
 const PIPELINE = [
-  { step: "01", label: "Harvest", body: "Pull top and recent posts from relevant subreddits." },
-  { step: "02", label: "Filter", body: "Match posts against pain-point language before any AI call — cutting noise by ~90%." },
-  { step: "03", label: "Cluster", body: "AI groups filtered posts into 3–8 distinct, actionable themes with representative quotes." },
-  { step: "04", label: "Score", body: "Demand, severity, and verdict are calculated and themes are ranked." },
-  { step: "05", label: "Present", body: "Ranked report with source links — every quote traceable to Reddit." },
+  { step: "01", label: "Harvest", body: "Fetch 50–100 top posts from the last 30 days across 1–3 relevant communities. Top posts only — sorted by engagement, not recency." },
+  { step: "02", label: "Filter", body: "Match posts against pain-point language before any AI call — cutting noise by ~90%. Only posts with frustration, request, or willingness-to-pay signals make it through." },
+  { step: "03", label: "Cluster", body: "AI groups filtered posts into 5–8 distinct themes with representative quotes. Each theme gets a name, summary, opportunity assessment, and next step." },
+  { step: "04", label: "Score", body: "Demand score, severity, verdict, and willingness-to-pay are calculated and themes are ranked highest to lowest." },
+  { step: "05", label: "Present", body: "Ranked report with source links — every quote is traceable back to the original post." },
+];
+
+const RELIABLE_FOR = [
+  { label: "Directional validation", body: "\"Is this a real problem space?\" — Yes, reliably. If Thynkk surfaces 5 themes with strong signals and real quotes, the pain exists." },
+  { label: "Fast idea elimination", body: "Fastest way to kill a bad idea before you write a line of code. If nobody's complaining about it, that's signal too." },
+  { label: "Quote mining", body: "The actual quotes are real posts from real people. Read them. They're worth more than the score." },
+  { label: "Niche discovery", body: "Finding that a community exists and is active around a problem — the Trend Radar is especially strong here." },
+  { label: "Conversation starters", body: "Use the themes to know exactly what to ask in customer interviews. The themes tell you what to probe." },
+];
+
+const NOT_RELIABLE_FOR = [
+  { label: "Market size", body: "Thynkk can't tell you TAM. Loud Reddit complainers ≠ addressable market." },
+  { label: "Build/no-build decisions alone", body: "Treat it as a first conversation, not a final verdict. Combine with 5–10 customer interviews before committing." },
+  { label: "Representative sampling", body: "Top posts skew toward dramatic, viral complaints. Quiet frustrations that don't get upvoted won't appear." },
+  { label: "Purchase intent", body: "Demand score is a proxy — upvotes and mentions, not credit cards. People complain about things they'd never pay to fix." },
 ];
 
 export default function MethodologyPage() {
@@ -59,10 +74,80 @@ export default function MethodologyPage() {
           <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-3">Methodology</p>
           <h1 className="font-mono text-4xl font-bold mb-4">How we rank demand</h1>
           <p className="text-[#94A3B8] text-lg leading-relaxed">
-            Thynkk is not a black box. Here is how we turn Reddit posts into ranked pain-point themes —
-            what the numbers mean, what is math, and what is AI judgment.
+            Thynkk is not a black box. Here is exactly what a scan does, what the numbers mean, and
+            how to make decisions you can actually trust from the output.
           </p>
         </div>
+
+        {/* What a scan actually does */}
+        <Section title="What a scan actually does">
+          <p>
+            No magic. Here is the full picture of what happens when you hit Scan.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 not-prose">
+            {[
+              { label: "Posts analysed", value: "50–100", sub: "top posts, last 30 days" },
+              { label: "Communities", value: "1–3", sub: "subreddits per scan" },
+              { label: "Filter pass rate", value: "~10%", sub: "posts reach the AI" },
+              { label: "Themes returned", value: "5–8", sub: "clustered by AI" },
+              { label: "Data window", value: "30 days", sub: "top posts only" },
+              { label: "Scan time", value: "30–90s", sub: "live fetch + AI" },
+            ].map((s) => (
+              <div key={s.label} className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-4">
+                <p className="font-mono font-bold text-2xl text-[#F8FAFC] mb-0.5">{s.value}</p>
+                <p className="text-xs font-mono text-[#6366F1] mb-1">{s.label}</p>
+                <p className="text-xs text-[#475569]">{s.sub}</p>
+              </div>
+            ))}
+          </div>
+          <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-5 space-y-2 not-prose">
+            <p className="text-xs font-mono text-[#475569] uppercase tracking-widest mb-3">Limitations to know</p>
+            <p className="text-sm text-[#94A3B8]">— Top posts skew toward dramatic, viral complaints. Quiet frustrations that don&apos;t get upvoted won&apos;t appear.</p>
+            <p className="text-sm text-[#94A3B8]">— Comments are not currently fetched — the richest signal lives in comment threads.</p>
+            <p className="text-sm text-[#94A3B8]">— AI clustering can produce themes that sound plausible but overfit to a handful of posts. Always read the source quotes.</p>
+            <p className="text-sm text-[#94A3B8]">— Demand score is a proxy — upvotes and mentions, not credit cards. People complain about things they&apos;d never pay to fix.</p>
+          </div>
+        </Section>
+
+        {/* How to rely on this data */}
+        <Section title="How to rely on this data">
+          <p>Thynkk is a strong first signal. Here is exactly when to trust it and when not to.</p>
+
+          <p className="text-xs font-mono text-[#22C55E] uppercase tracking-widest mt-2">Reliable for</p>
+          <div className="space-y-2 not-prose">
+            {RELIABLE_FOR.map((r) => (
+              <div key={r.label} className="flex gap-3 bg-[#0E1223] border border-[#22C55E]/20 rounded-lg p-4">
+                <span className="text-[#22C55E] mt-0.5 shrink-0">✓</span>
+                <div>
+                  <p className="font-mono text-sm font-semibold text-[#F8FAFC] mb-0.5">{r.label}</p>
+                  <p className="text-sm text-[#94A3B8]">{r.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-xs font-mono text-[#EF4444] uppercase tracking-widest mt-4">Not reliable for</p>
+          <div className="space-y-2 not-prose">
+            {NOT_RELIABLE_FOR.map((r) => (
+              <div key={r.label} className="flex gap-3 bg-[#0E1223] border border-[#EF4444]/20 rounded-lg p-4">
+                <span className="text-[#EF4444] mt-0.5 shrink-0">✗</span>
+                <div>
+                  <p className="font-mono text-sm font-semibold text-[#F8FAFC] mb-0.5">{r.label}</p>
+                  <p className="text-sm text-[#94A3B8]">{r.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-[#0E1223] border border-[#6366F1]/30 rounded-lg p-5 not-prose">
+            <p className="font-mono text-sm font-semibold text-[#F8FAFC] mb-2">The right mental model</p>
+            <p className="text-sm text-[#94A3B8] leading-relaxed">
+              Use Thynkk as your first conversation with a market — not your last. A strong scan result
+              tells you a problem space is worth 5–10 customer interviews. A weak result tells you to
+              move on before you waste a week. That alone is worth it.
+            </p>
+          </div>
+        </Section>
 
         <Section title="The pipeline">
           <p>Every Pain Point Scanner scan follows the same five steps:</p>
