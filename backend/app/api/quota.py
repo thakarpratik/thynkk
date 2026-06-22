@@ -16,6 +16,7 @@ from app.api.users import user_is_paid
 
 FREE_LIMIT = 1
 PAID_LIMIT = 50
+FREE_IP_LIMIT = 2  # lifetime free scans per IP, across all accounts
 
 router = APIRouter(prefix="/quota", tags=["quota"])
 
@@ -23,6 +24,56 @@ router = APIRouter(prefix="/quota", tags=["quota"])
 def get_engine() -> Engine:
     from app.main import db_engine
     return db_engine
+
+
+def ensure_ip_table(engine: Engine) -> None:
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS ip_free_scans (
+                ip          TEXT PRIMARY KEY,
+                scan_count  INTEGER NOT NULL DEFAULT 0
+            )
+        """))
+
+
+def get_ip_free_count(engine: Engine, ip: str) -> int:
+    ensure_ip_table(engine)
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT scan_count FROM ip_free_scans WHERE ip = :ip"),
+            {"ip": ip},
+        ).fetchone()
+    return int(row[0]) if row else 0
+
+
+def increment_ip_free_count(engine: Engine, ip: str) -> None:
+    ensure_ip_table(engine)
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO ip_free_scans (ip, scan_count)
+                VALUES (:ip, 1)
+                ON CONFLICT (ip) DO UPDATE SET scan_count = ip_free_scans.scan_count + 1
+            """),
+            {"ip": ip},
+        )
+
+
+def check_ip_free_quota(request: Request, engine: Engine, is_paid: bool) -> None:
+    if is_paid:
+        return
+    ip = get_client_ip(request)
+    count = get_ip_free_count(engine, ip)
+    if count >= FREE_IP_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "ip_quota_exceeded",
+                "scan_count": count,
+                "limit": FREE_IP_LIMIT,
+                "message": "Free scan limit reached for this network. Upgrade to Pro for more scans.",
+            },
+        )
 
 
 def ensure_table(engine: Engine) -> None:
@@ -168,8 +219,15 @@ def increment_quota(account_key: str, engine: Engine) -> None:
         )
 
 
-def check_quota(account_key: str, engine: Engine, clerk_id: str | None = None) -> dict:
+def check_quota(
+    account_key: str,
+    engine: Engine,
+    clerk_id: str | None = None,
+    request: Request | None = None,
+) -> dict:
     quota = get_quota(account_key, engine, clerk_id)
+    if request is not None:
+        check_ip_free_quota(request, engine, quota["is_paid"])
     limit = PAID_LIMIT if quota["is_paid"] else FREE_LIMIT
     if quota["scan_count"] >= limit:
         raise HTTPException(

@@ -4,8 +4,13 @@ import threading
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.engine import Engine
+
+from app.api.billing import gate_radar_niches
+from app.api.clerk_auth import OptionalClerkId
+from app.api.users import user_is_paid
 
 router = APIRouter(prefix="/radar", tags=["radar"])
 
@@ -26,6 +31,12 @@ class TrendItemOut(BaseModel):
     tag: str
     posts: int
     subreddit: str
+    locked: bool = False
+
+
+def get_engine() -> Engine:
+    from app.main import db_engine
+    return db_engine
 
 
 class TrendRadarResponse(BaseModel):
@@ -61,16 +72,31 @@ def _run_pipeline() -> dict[str, Any]:
     }
 
 
+def _respond(data: dict, from_cache: bool, is_paid: bool) -> TrendRadarResponse:
+    niches = gate_radar_niches(data["niches"], is_paid)
+    return TrendRadarResponse(
+        niches=[TrendItemOut(**n) for n in niches],
+        as_of=data["as_of"],
+        window_days=data["window_days"],
+        from_cache=from_cache,
+    )
+
+
 @router.get("/trends", response_model=TrendRadarResponse)
-def get_trends(refresh: bool = False) -> TrendRadarResponse:
+def get_trends(
+    refresh: bool = False,
+    clerk_id: OptionalClerkId = None,
+    engine: Engine = Depends(get_engine),
+) -> TrendRadarResponse:
     global _cached_result, _cached_at, _running
+    is_paid = bool(clerk_id and user_is_paid(engine, clerk_id))
 
     with _cache_lock:
         if _running:
             raise HTTPException(status_code=503, detail="Trend Radar scan in progress. Try again in ~60s.")
 
         if not refresh and _cached_result and not _is_stale():
-            return TrendRadarResponse(**_cached_result, from_cache=True)
+            return _respond(_cached_result, from_cache=True, is_paid=is_paid)
 
         _running = True
 
@@ -79,7 +105,7 @@ def get_trends(refresh: bool = False) -> TrendRadarResponse:
         with _cache_lock:
             _cached_result = data
             _cached_at = data["as_of"]
-        return TrendRadarResponse(**data, from_cache=False)
+        return _respond(data, from_cache=False, is_paid=is_paid)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Radar pipeline failed: {e}")
     finally:

@@ -6,8 +6,9 @@ from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 
 from app.api.billing import gate_themes_for_plan
+from app.api.email_guard import check_email_verified
 from app.api.users import user_is_paid
-from app.api.clerk_auth import ClerkId, OptionalClerkId
+from app.api.clerk_auth import ClerkId, ClerkPayload, OptionalClerkId
 from app.api.models import (
     ScanCreated,
     ScanReport,
@@ -20,7 +21,13 @@ from app.api.models import (
 from app.api.runner import start_scan
 from app.api.scan_history import can_access_scan, claim_ip_scans, get_saved_scan, list_scans
 from app.api.store import ScanStore
-from app.api.quota import account_key_for, check_quota, increment_quota, get_client_ip
+from app.api.quota import (
+    account_key_for,
+    check_quota,
+    increment_ip_free_count,
+    increment_quota,
+    get_client_ip,
+)
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
@@ -43,6 +50,9 @@ def _themes_to_out(themes: list[dict]) -> list[ThemeOut]:
                 QuoteOut(excerpt=q["excerpt"], permalink=q["permalink"])
                 for q in t.get("quotes", [])
             ],
+            demand_label=t.get("demand_label"),
+            severity_label=t.get("severity_label"),
+            locked=bool(t.get("locked", False)),
         )
         for t in themes
     ]
@@ -95,13 +105,16 @@ def get_engine() -> Engine:
 def submit_scan(
     request: Request,
     body: ScanRequest,
-    clerk_id: OptionalClerkId = None,
+    clerk_payload: ClerkPayload,
     store: ScanStore = Depends(get_store),
     engine: Engine = Depends(get_engine),
 ) -> ScanCreated:
+    check_email_verified(clerk_payload)
+    clerk_id = clerk_payload["sub"]
+
     ip = get_client_ip(request)
     key = account_key_for(request, clerk_id)
-    check_quota(key, engine, clerk_id)
+    quota = check_quota(key, engine, clerk_id, request=request)
 
     scan_id = str(uuid.uuid4())
     store.create(scan_id, body.query)
@@ -117,6 +130,8 @@ def submit_scan(
     )
 
     increment_quota(key, engine)
+    if not quota["is_paid"]:
+        increment_ip_free_count(engine, ip)
     return ScanCreated(scan_id=scan_id)
 
 

@@ -19,6 +19,9 @@ export interface Theme {
   competition: string;
   nextStep: string;
   quotes: Quote[];
+  demandLabel?: string | null;
+  severityLabel?: string | null;
+  locked?: boolean;
 }
 
 export interface TrendItem {
@@ -29,6 +32,7 @@ export interface TrendItem {
   tag: "HOT" | "RISING" | "NEW";
   posts: number;
   subreddit: string;
+  locked?: boolean;
 }
 
 export interface TrendRadarMeta {

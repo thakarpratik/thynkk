@@ -66,6 +66,7 @@ export function ThemePanel({ theme, rank, isPro, onClose }: ThemePanelProps) {
 }
 
 function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: number; isPro: boolean; onClose: () => void }) {
+  const locked = theme.locked ?? !isPro;
   const verdictStyle = VERDICT_STYLES[theme.verdict] ?? "bg-[#1E293B] text-[#94A3B8] border-[#1E293B]";
   const wtpStyle = WTP_STYLES[theme.willingnessToPay] ?? WTP_STYLES.Unknown;
 
@@ -98,10 +99,10 @@ function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: num
         {/* Score tiles */}
         <div className="grid grid-cols-3 gap-3">
           <ScoreTile label="Demand" blurred={false}>
-            <DemandBadge score={theme.demand} />
+            <DemandBadge score={theme.demand} label={locked ? theme.demandLabel : null} />
           </ScoreTile>
           <ScoreTile label="Severity" blurred={false}>
-            <SeverityBar score={theme.severity} />
+            <SeverityBar score={theme.severity} label={locked ? theme.severityLabel : null} />
           </ScoreTile>
           <ScoreTile label="Mentions" blurred={false}>
             <span className="font-mono text-lg font-bold text-[#94A3B8]">{theme.mentions}</span>
@@ -109,41 +110,53 @@ function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: num
         </div>
 
         {/* Verdict + WTP row */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className={`grid gap-3 ${locked ? "grid-cols-1" : "grid-cols-2"}`}>
           <div className="bg-[#0E1223] border border-[#1E293B] rounded-md p-3">
             <p className="text-[10px] font-mono text-[#94A3B8] uppercase tracking-widest mb-2">Verdict</p>
             <span className={`text-xs font-mono px-2 py-0.5 rounded border ${verdictStyle}`}>
               {theme.verdict}
             </span>
           </div>
-          <div className="bg-[#0E1223] border border-[#1E293B] rounded-md p-3">
-            <p className="text-[10px] font-mono text-[#94A3B8] uppercase tracking-widest mb-2">Willingness to pay</p>
-            <p className={`font-mono text-sm font-semibold ${wtpStyle}`}>{theme.willingnessToPay}</p>
-            {theme.willingnessReason && (
-              <p className="text-[10px] text-[#475569] mt-1 leading-relaxed">{theme.willingnessReason}</p>
-            )}
-          </div>
+          {!locked && theme.willingnessToPay && (
+            <div className="bg-[#0E1223] border border-[#1E293B] rounded-md p-3">
+              <p className="text-[10px] font-mono text-[#94A3B8] uppercase tracking-widest mb-2">Willingness to pay</p>
+              <p className={`font-mono text-sm font-semibold ${wtpStyle}`}>{theme.willingnessToPay}</p>
+              {theme.willingnessReason && (
+                <p className="text-[10px] text-[#475569] mt-1 leading-relaxed">{theme.willingnessReason}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <Section label="Summary">
           <p className="text-sm text-[#CBD5E1] leading-relaxed">{theme.summary}</p>
         </Section>
 
-        <Section label="Opportunity">
+        {!locked && theme.opportunity && (
+          <Section label="Opportunity">
+            <div className="bg-[#6366F1]/10 border border-[#6366F1]/25 rounded-md p-4">
+              <p className="text-sm text-[#CBD5E1] leading-relaxed">{theme.opportunity}</p>
+            </div>
+          </Section>
+        )}
+
+        {locked && (
           <div className="bg-[#6366F1]/10 border border-[#6366F1]/25 rounded-md p-4">
-            <p className="text-sm text-[#CBD5E1] leading-relaxed">{theme.opportunity}</p>
+            <p className="text-sm text-[#CBD5E1] leading-relaxed">
+              Upgrade to Pro for opportunity analysis, willingness to pay, competition notes, and exact demand scores.
+            </p>
           </div>
-        </Section>
+        )}
 
         {/* Competition */}
-        {theme.competition && (
+        {!locked && theme.competition && (
           <Section label="Competition">
             <p className="text-sm text-[#94A3B8] leading-relaxed">{theme.competition}</p>
           </Section>
         )}
 
         {/* Next step */}
-        {theme.nextStep && (
+        {!locked && theme.nextStep && (
           <Section label="Next step this week">
             <div className="bg-[#22C55E]/8 border border-[#22C55E]/20 rounded-md p-4">
               <p className="text-sm text-[#CBD5E1] leading-relaxed">{theme.nextStep}</p>

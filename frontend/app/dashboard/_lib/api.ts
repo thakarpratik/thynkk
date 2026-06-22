@@ -31,6 +31,9 @@ interface ApiTheme {
   competition: string;
   next_step: string;
   quotes: ApiQuote[];
+  demand_label?: string | null;
+  severity_label?: string | null;
+  locked?: boolean;
 }
 
 interface ReportResponse {
@@ -61,6 +64,7 @@ export interface TrendItemApi {
   tag: "HOT" | "RISING" | "NEW";
   posts: number;
   subreddit: string;
+  locked?: boolean;
 }
 
 export interface TrendsResponse {
@@ -104,15 +108,18 @@ function toTheme(t: ApiTheme): Theme {
     mentions: t.mention_count,
     demand: Math.round(t.demand_score),
     verdict: t.verdict ?? "Unknown",
-    willingnessToPay: t.willingness_to_pay ?? "Unknown",
+    willingnessToPay: t.willingness_to_pay ?? "",
     willingnessReason: t.willingness_reason ?? "",
     competition: t.competition ?? "",
     nextStep: t.next_step ?? "",
     quotes: t.quotes.map((q) => ({ text: q.excerpt, url: q.permalink })),
+    demandLabel: t.demand_label ?? null,
+    severityLabel: t.severity_label ?? null,
+    locked: t.locked ?? false,
   };
 }
 
-export async function submitScan(query: string, getToken?: TokenGetter): Promise<string> {
+export async function submitScan(query: string, getToken: TokenGetter): Promise<string> {
   const res = await fetch(`${BASE}/scans`, {
     method: "POST",
     headers: {
@@ -121,7 +128,16 @@ export async function submitScan(query: string, getToken?: TokenGetter): Promise
     },
     body: JSON.stringify({ query, post_limit: 100 }),
   });
-  if (res.status === 429) throw new Error("quota_exceeded");
+  if (res.status === 429) {
+    const detail = await res.json().catch(() => ({}));
+    const code = detail?.detail?.error ?? "quota_exceeded";
+    throw new Error(code);
+  }
+  if (res.status === 403) {
+    const detail = await res.json().catch(() => ({}));
+    const code = detail?.detail?.error ?? "forbidden";
+    throw new Error(code);
+  }
   if (!res.ok) throw new Error(`Failed to submit scan: ${res.status}`);
   const data = await res.json();
   return data.scan_id as string;
@@ -190,9 +206,9 @@ export async function activatePayPalSubscription(
   return res.json();
 }
 
-export async function fetchTrends(refresh = false): Promise<TrendsResponse> {
+export async function fetchTrends(refresh = false, getToken?: TokenGetter): Promise<TrendsResponse> {
   const url = `${BASE}/radar/trends${refresh ? "?refresh=true" : ""}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: await authHeaders(getToken) });
   if (res.status === 503) throw new Error("scanning");
   if (!res.ok) throw new Error(`Failed to fetch trends: ${res.status}`);
   return res.json();

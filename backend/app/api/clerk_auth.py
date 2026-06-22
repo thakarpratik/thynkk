@@ -66,5 +66,10 @@ def require_clerk_id(authorization: str | None = Header(None)) -> str:
     return verify_clerk_token(authorization)["sub"]
 
 
+def require_clerk_payload(authorization: str | None = Header(None)) -> dict:
+    return verify_clerk_token(authorization)
+
+
 ClerkId = Annotated[str, Depends(require_clerk_id)]
+ClerkPayload = Annotated[dict, Depends(require_clerk_payload)]
 OptionalClerkId = Annotated[str | None, Depends(optional_clerk_id)]

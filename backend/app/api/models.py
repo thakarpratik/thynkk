@@ -67,6 +67,9 @@ class ThemeOut(BaseModel):
     competition: str = ""
     next_step: str = ""
     quotes: list[QuoteOut]
+    demand_label: str | None = None
+    severity_label: str | None = None
+    locked: bool = False
 
 
 class ScanReport(BaseModel):

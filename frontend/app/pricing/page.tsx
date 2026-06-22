@@ -17,14 +17,15 @@ export const metadata: Metadata = {
 
 const FREE_FEATURES = [
   "1 free scan",
-  "Top 3 pain-point themes",
+  "Top 3 themes with summary + 1 quote each",
+  "Qualitative demand & severity labels",
   "Top 3 trending niches",
-  "Source quotes + links",
 ];
 
 const PRO_FEATURES = [
   "50 scans per month",
-  "Full pain-point reports",
+  "Full reports with exact demand scores",
+  "Opportunity, WTP & competition analysis",
   "Full Trend Radar feed",
   "CSV + PDF exports",
   "Saved searches",

@@ -17,6 +17,66 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/billing", tags=["billing"])
 
 FREE_THEME_LIMIT = 3
+FREE_RADAR_LIMIT = 3
+
+
+def _demand_label(score: float) -> str:
+    if score >= 80:
+        return "High"
+    if score >= 50:
+        return "Medium"
+    return "Low"
+
+
+def _severity_label(score: int) -> str:
+    if score >= 8:
+        return "High"
+    if score >= 5:
+        return "Medium"
+    return "Low"
+
+
+def gate_theme_for_plan(theme: dict, is_paid: bool) -> dict:
+    """Strip actionable fields from a single theme for free users."""
+    if is_paid:
+        return theme
+
+    demand = float(theme.get("demand_score", 0))
+    severity = int(theme.get("severity_score", 0))
+    quotes = theme.get("quotes", [])[:1]
+
+    return {
+        **theme,
+        "demand_score": 0,
+        "severity_score": 0,
+        "demand_label": _demand_label(demand),
+        "severity_label": _severity_label(severity),
+        "opportunity": "",
+        "willingness_to_pay": "",
+        "willingness_reason": "",
+        "competition": "",
+        "next_step": "",
+        "quotes": quotes,
+        "locked": True,
+    }
+
+
+def gate_themes_for_plan(themes: list, is_paid: bool) -> list:
+    visible = themes if is_paid else themes[:FREE_THEME_LIMIT]
+    return [gate_theme_for_plan(t, is_paid) for t in visible]
+
+
+def gate_radar_niches(niches: list, is_paid: bool) -> list:
+    if is_paid:
+        return niches
+    gated = []
+    for niche in niches[:FREE_RADAR_LIMIT]:
+        gated.append({
+            **niche,
+            "growth_pct": 0,
+            "locked": True,
+        })
+    return gated
 
 
 def get_engine() -> Engine:
@@ -150,9 +210,3 @@ async def paypal_webhook(request: Request, engine: Engine = Depends(get_engine))
             sync_paid_status(engine, row[0], False)
 
     return {"status": "ok"}
-
-
-def gate_themes_for_plan(themes: list, is_paid: bool) -> list:
-    if is_paid:
-        return themes
-    return themes[:FREE_THEME_LIMIT]

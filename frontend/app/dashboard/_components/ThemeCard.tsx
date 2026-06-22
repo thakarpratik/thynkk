@@ -11,10 +11,12 @@ const VERDICT_STYLES: Record<string, string> = {
 interface ThemeCardProps {
   theme: Theme;
   index: number;
+  isPro: boolean;
   onClick?: () => void;
 }
 
-export function ThemeCard({ theme, index, onClick }: ThemeCardProps) {
+export function ThemeCard({ theme, index, isPro, onClick }: ThemeCardProps) {
+  const locked = theme.locked ?? !isPro;
   return (
     <div
       role="button"
@@ -36,11 +38,11 @@ export function ThemeCard({ theme, index, onClick }: ThemeCardProps) {
           <div className="flex items-center gap-4 shrink-0">
             <div className="text-right">
               <p className="text-[10px] text-[#94A3B8] uppercase font-mono mb-1">Demand</p>
-              <DemandBadge score={theme.demand} />
+              <DemandBadge score={theme.demand} label={locked ? theme.demandLabel : null} />
             </div>
             <div className="text-right">
               <p className="text-[10px] text-[#94A3B8] uppercase font-mono mb-1">Severity</p>
-              <SeverityBar score={theme.severity} />
+              <SeverityBar score={theme.severity} label={locked ? theme.severityLabel : null} />
             </div>
           </div>
         </div>
@@ -54,10 +56,20 @@ export function ThemeCard({ theme, index, onClick }: ThemeCardProps) {
         )}
         <p className="text-sm text-[#94A3B8] mb-3 leading-relaxed">{theme.summary}</p>
 
-        <div className="bg-[#1A1E2F] rounded-md p-3 mb-3">
-          <p className="text-[10px] font-mono text-[#6366F1] uppercase mb-1">Opportunity</p>
-          <p className="text-xs text-[#CBD5E1]">{theme.opportunity}</p>
-        </div>
+        {!locked && theme.opportunity && (
+          <div className="bg-[#1A1E2F] rounded-md p-3 mb-3">
+            <p className="text-[10px] font-mono text-[#6366F1] uppercase mb-1">Opportunity</p>
+            <p className="text-xs text-[#CBD5E1]">{theme.opportunity}</p>
+          </div>
+        )}
+
+        {locked && (
+          <div className="bg-[#1A1E2F] rounded-md p-3 mb-3 border border-[#6366F1]/20">
+            <p className="text-xs text-[#94A3B8]">
+              Opportunity, exact scores, and full analysis — <span className="text-[#6366F1]">Pro</span>
+            </p>
+          </div>
+        )}
 
         {theme.quotes[0] && (
           <blockquote className="border-l-2 border-[#6366F1] pl-3 mb-3">
@@ -79,7 +91,8 @@ export function ThemeCard({ theme, index, onClick }: ThemeCardProps) {
         <div className="flex items-center justify-between">
           <span className="text-xs text-[#94A3B8] font-mono">{theme.mentions} mentions</span>
           <span className="text-xs text-[#6366F1] font-mono">
-            {theme.quotes.length > 1 ? `+${theme.quotes.length - 1} more quotes · ` : ""}View all &rarr;
+            {locked ? "View preview · " : theme.quotes.length > 1 ? `+${theme.quotes.length - 1} more quotes · ` : ""}
+            View all &rarr;
           </span>
         </div>
       </div>

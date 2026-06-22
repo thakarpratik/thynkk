@@ -100,6 +100,9 @@ export default function Dashboard() {
       competition: t.competition ?? "",
       nextStep: t.next_step ?? "",
       quotes: t.quotes.map((q) => ({ text: q.excerpt, url: q.permalink })),
+      demandLabel: t.demand_label ?? null,
+      severityLabel: t.severity_label ?? null,
+      locked: t.locked ?? false,
     })),
   }), []);
 
@@ -159,7 +162,7 @@ export default function Dashboard() {
     setRadarStatus("loading");
     setRadarError("");
     try {
-      const data = await fetchTrends(refresh);
+      const data = await fetchTrends(refresh, getToken);
       setTrends(data.niches.map((n) => ({
         niche: n.niche,
         description: n.description,
@@ -168,6 +171,7 @@ export default function Dashboard() {
         tag: n.tag,
         posts: n.posts,
         subreddit: n.subreddit,
+        locked: n.locked ?? false,
       })));
       setTrendMeta({ asOf: new Date(data.as_of), windowDays: data.window_days });
       setRadarStatus("done");
@@ -180,7 +184,7 @@ export default function Dashboard() {
         setRadarStatus("error");
       }
     }
-  }, []);
+  }, [getToken]);
 
   useEffect(() => {
     if (mode === "radar" && radarStatus === "idle" && !radarBootstrapped.current) {
@@ -249,9 +253,18 @@ export default function Dashboard() {
     setSort("demand");
     stopPolling();
     submitScan(q, getToken).then(poll).catch((e: unknown) => {
-      if (e instanceof Error && e.message === "quota_exceeded") {
-        refreshAccount();
-        setErrorMessage("Scan limit reached. Upgrade to Pro for 50 scans/month.");
+      if (e instanceof Error) {
+        if (e.message === "quota_exceeded") {
+          refreshAccount();
+          setErrorMessage("Scan limit reached. Upgrade to Pro for 50 scans/month.");
+        } else if (e.message === "ip_quota_exceeded") {
+          refreshAccount();
+          setErrorMessage("Free scan limit reached for this network. Upgrade to Pro for more scans.");
+        } else if (e.message === "email_not_verified") {
+          setErrorMessage("Please verify your email address before scanning. Check your inbox.");
+        } else {
+          setErrorMessage("Could not start scan. Please try again in a moment.");
+        }
       } else {
         setErrorMessage("Could not start scan. Please try again in a moment.");
       }
@@ -379,6 +392,7 @@ export default function Dashboard() {
                   key={theme.name}
                   theme={theme}
                   index={i}
+                  isPro={isPro}
                   onClick={() => setActiveTheme({ theme, index: i })}
                 />
               ))}

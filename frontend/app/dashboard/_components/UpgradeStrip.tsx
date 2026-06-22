@@ -16,8 +16,8 @@ export function UpgradeStrip({ variant, hiddenCount = 0, onUpgrade }: UpgradeStr
 
   const subtitle =
     variant === "scanner"
-      ? "Pro: all themes, demand scores, CSV export, 50 scans/month"
-      : "Pro: every trending niche, full analysis, 50 scans/month";
+      ? "Pro: all themes, exact scores, opportunity analysis, CSV export, 50 scans/month"
+      : "Pro: every trending niche, full momentum data, 50 scans/month";
 
   return (
     <div className="flex items-center justify-between gap-4 px-5 py-4 bg-[#0E1223] border border-[#6366F1]/30 rounded-lg mt-4">
