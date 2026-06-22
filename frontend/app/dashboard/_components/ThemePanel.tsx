@@ -1,22 +1,26 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Theme } from "../_types";
 import { SeverityBar } from "./SeverityBar";
 import { DemandBadge } from "./DemandBadge";
+import {
+  formatThemeShareText,
+  isThemeSaved,
+  saveTheme,
+  shareThemeText,
+} from "../_lib/theme-actions";
 
 interface ThemePanelProps {
   theme: Theme | null;
   rank: number;
+  scanQuery: string;
   isPro: boolean;
+  canScan: boolean;
   onClose: () => void;
+  onScanDeeper: (query: string) => void;
+  onUpgrade?: () => void;
 }
-
-const BLURRED: React.CSSProperties = {
-  filter: "blur(5px)",
-  userSelect: "none",
-  pointerEvents: "none",
-};
 
 const VERDICT_STYLES: Record<string, string> = {
   "Strong signal": "bg-[#22C55E]/15 text-[#22C55E] border-[#22C55E]/30",
@@ -31,7 +35,11 @@ const WTP_STYLES: Record<string, string> = {
   Unknown: "text-[#94A3B8]",
 };
 
-export function ThemePanel({ theme, rank, isPro, onClose }: ThemePanelProps) {
+type ActionFeedback = "saved" | "copied" | "shared" | null;
+
+export function ThemePanel({
+  theme, rank, scanQuery, isPro, canScan, onClose, onScanDeeper, onUpgrade,
+}: ThemePanelProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
@@ -59,20 +67,84 @@ export function ThemePanel({ theme, rank, isPro, onClose }: ThemePanelProps) {
           theme ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        {theme && <PanelContent theme={theme} rank={rank} isPro={isPro} onClose={onClose} />}
+        {theme && (
+          <PanelContent
+            theme={theme}
+            rank={rank}
+            scanQuery={scanQuery}
+            isPro={isPro}
+            canScan={canScan}
+            onClose={onClose}
+            onScanDeeper={onScanDeeper}
+            onUpgrade={onUpgrade}
+          />
+        )}
       </aside>
     </>
   );
 }
 
-function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: number; isPro: boolean; onClose: () => void }) {
+function PanelContent({
+  theme, rank, scanQuery, isPro, canScan, onClose, onScanDeeper, onUpgrade,
+}: {
+  theme: Theme;
+  rank: number;
+  scanQuery: string;
+  isPro: boolean;
+  canScan: boolean;
+  onClose: () => void;
+  onScanDeeper: (query: string) => void;
+  onUpgrade?: () => void;
+}) {
   const locked = theme.locked ?? !isPro;
+  const [feedback, setFeedback] = useState<ActionFeedback>(null);
+  const [saved, setSaved] = useState(() => isThemeSaved(theme, scanQuery));
   const verdictStyle = VERDICT_STYLES[theme.verdict] ?? "bg-[#1E293B] text-[#94A3B8] border-[#1E293B]";
   const wtpStyle = WTP_STYLES[theme.willingnessToPay] ?? WTP_STYLES.Unknown;
 
+  useEffect(() => {
+    setSaved(isThemeSaved(theme, scanQuery));
+    setFeedback(null);
+  }, [theme, scanQuery]);
+
+  useEffect(() => {
+    if (!feedback) return;
+    const t = setTimeout(() => setFeedback(null), 2000);
+    return () => clearTimeout(t);
+  }, [feedback]);
+
+  const handleScanDeeper = () => {
+    onClose();
+    if (!canScan) {
+      onUpgrade?.();
+      return;
+    }
+    onScanDeeper(theme.name);
+  };
+
+  const handleSave = () => {
+    if (!isPro) {
+      onUpgrade?.();
+      return;
+    }
+    saveTheme(theme, scanQuery);
+    setSaved(true);
+    setFeedback("saved");
+  };
+
+  const handleShare = async () => {
+    const text = formatThemeShareText(theme, scanQuery, rank);
+    try {
+      const result = await shareThemeText(text, theme.name);
+      setFeedback(result);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      setFeedback(null);
+    }
+  };
+
   return (
     <>
-      {/* Header */}
       <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-[#1E293B] shrink-0">
         <div className="min-w-0">
           <p className="text-[10px] font-mono text-[#94A3B8] uppercase tracking-widest mb-1">
@@ -83,6 +155,7 @@ function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: num
           </h2>
         </div>
         <button
+          type="button"
           onClick={onClose}
           className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[#1E293B] transition-colors cursor-pointer"
           aria-label="Close panel"
@@ -93,23 +166,19 @@ function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: num
         </button>
       </div>
 
-      {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-
-        {/* Score tiles */}
         <div className="grid grid-cols-3 gap-3">
-          <ScoreTile label="Demand" blurred={false}>
+          <ScoreTile label="Demand">
             <DemandBadge score={theme.demand} label={locked ? theme.demandLabel : null} />
           </ScoreTile>
-          <ScoreTile label="Severity" blurred={false}>
+          <ScoreTile label="Severity">
             <SeverityBar score={theme.severity} label={locked ? theme.severityLabel : null} />
           </ScoreTile>
-          <ScoreTile label="Mentions" blurred={false}>
+          <ScoreTile label="Mentions">
             <span className="font-mono text-lg font-bold text-[#94A3B8]">{theme.mentions}</span>
           </ScoreTile>
         </div>
 
-        {/* Verdict + WTP row */}
         <div className={`grid gap-3 ${locked ? "grid-cols-1" : "grid-cols-2"}`}>
           <div className="bg-[#0E1223] border border-[#1E293B] rounded-md p-3">
             <p className="text-[10px] font-mono text-[#94A3B8] uppercase tracking-widest mb-2">Verdict</p>
@@ -148,14 +217,12 @@ function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: num
           </div>
         )}
 
-        {/* Competition */}
         {!locked && theme.competition && (
           <Section label="Competition">
             <p className="text-sm text-[#94A3B8] leading-relaxed">{theme.competition}</p>
           </Section>
         )}
 
-        {/* Next step */}
         {!locked && theme.nextStep && (
           <Section label="Next step this week">
             <div className="bg-[#22C55E]/8 border border-[#22C55E]/20 rounded-md p-4">
@@ -164,7 +231,6 @@ function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: num
           </Section>
         )}
 
-        {/* Quotes */}
         <Section label={`${theme.quotes.length} ${theme.quotes.length === 1 ? "Quote" : "Quotes"} from Reddit`}>
           <div className="space-y-3">
             {theme.quotes.map((q, i) => (
@@ -173,7 +239,7 @@ function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: num
                   &ldquo;{q.text}&rdquo;
                 </p>
                 <a
-                  href={q.url}
+                  href={q.url.startsWith("http") ? q.url : `https://www.reddit.com${q.url}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#6366F1] hover:text-[#818CF8] transition-colors"
@@ -189,27 +255,52 @@ function PanelContent({ theme, rank, isPro, onClose }: { theme: Theme; rank: num
         </Section>
       </div>
 
-      {/* Footer */}
-      <div className="shrink-0 px-6 py-4 border-t border-[#1E293B] flex items-center gap-3">
-        <button className="flex-1 bg-[#6366F1] hover:bg-[#4F46E5] text-white py-2.5 rounded-md font-medium text-sm font-mono transition-colors cursor-pointer">
-          Scan this theme deeper
-        </button>
-        <button className="px-4 py-2.5 border border-[#1E293B] hover:border-[#6366F1]/50 text-[#94A3B8] hover:text-[#F8FAFC] rounded-md text-sm font-mono transition-all cursor-pointer">
-          Save
-        </button>
-        <button className="px-4 py-2.5 border border-[#1E293B] hover:border-[#6366F1]/50 text-[#94A3B8] hover:text-[#F8FAFC] rounded-md text-sm font-mono transition-all cursor-pointer">
-          Share
-        </button>
+      <div className="shrink-0 px-6 py-4 border-t border-[#1E293B]">
+        {feedback && (
+          <p className="text-xs font-mono text-[#22C55E] mb-2 text-center">
+            {feedback === "saved" && "Theme saved"}
+            {feedback === "copied" && "Copied to clipboard"}
+            {feedback === "shared" && "Shared"}
+          </p>
+        )}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleScanDeeper}
+            className="flex-1 bg-[#6366F1] hover:bg-[#4F46E5] text-white py-2.5 rounded-md font-medium text-sm font-mono transition-colors cursor-pointer"
+          >
+            {canScan ? "Scan this theme deeper" : "Upgrade to scan more"}
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className={`px-4 py-2.5 border rounded-md text-sm font-mono transition-all cursor-pointer ${
+              saved
+                ? "border-[#22C55E]/50 text-[#22C55E]"
+                : "border-[#1E293B] hover:border-[#6366F1]/50 text-[#94A3B8] hover:text-[#F8FAFC]"
+            }`}
+            aria-label={isPro ? "Save theme" : "Upgrade to save themes"}
+          >
+            {saved ? "Saved" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={handleShare}
+            className="px-4 py-2.5 border border-[#1E293B] hover:border-[#6366F1]/50 text-[#94A3B8] hover:text-[#F8FAFC] rounded-md text-sm font-mono transition-all cursor-pointer"
+          >
+            Share
+          </button>
+        </div>
       </div>
     </>
   );
 }
 
-function ScoreTile({ label, blurred, children }: { label: string; blurred: boolean; children: React.ReactNode }) {
+function ScoreTile({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="bg-[#0E1223] border border-[#1E293B] rounded-md p-3">
       <p className="text-[10px] font-mono text-[#94A3B8] uppercase tracking-widest mb-1.5">{label}</p>
-      <div style={blurred ? BLURRED : undefined}>{children}</div>
+      {children}
     </div>
   );
 }

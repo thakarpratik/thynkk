@@ -439,8 +439,12 @@ export default function Dashboard() {
       <ThemePanel
         theme={activeTheme?.theme ?? null}
         rank={(activeTheme?.index ?? 0) + 1}
+        scanQuery={scannedQuery}
         isPro={isPro}
+        canScan={(quota?.remaining ?? 0) > 0}
         onClose={() => setActiveTheme(null)}
+        onScanDeeper={beginScan}
+        onUpgrade={openUpgrade}
       />
 
       <UpgradeModal
