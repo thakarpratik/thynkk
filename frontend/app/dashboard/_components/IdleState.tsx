@@ -1,15 +1,10 @@
 "use client";
 
 import { LiveActivity } from "../../_components/LiveActivity";
-import { ScanHistory } from "./ScanHistory";
-import type { ScanHistoryEntry } from "../_lib/scan-history";
 
 interface IdleStateProps {
-  history: ScanHistoryEntry[];
   onScan: (query: string) => void;
   onSwitchRadar: () => void;
-  onRestore: (entry: ScanHistoryEntry) => void;
-  onClearHistory: () => void;
 }
 
 const QUICK_SCANS = [
@@ -27,12 +22,10 @@ const EXAMPLE_THEMES = [
   { name: "Cash flow visibility", demand: 61, verdict: "Weak signal" },
 ];
 
-export function IdleState({ history, onScan, onSwitchRadar, onRestore, onClearHistory }: IdleStateProps) {
+export function IdleState({ onScan, onSwitchRadar }: IdleStateProps) {
   return (
     <div className="space-y-8 py-4">
       <LiveActivity variant="compact" />
-      <ScanHistory history={history} onRestore={onRestore} onClear={onClearHistory} />
-
       {/* Quick start */}
       <div>
         <p className="text-xs font-mono text-[#475569] uppercase tracking-widest mb-3">Quick scan</p>

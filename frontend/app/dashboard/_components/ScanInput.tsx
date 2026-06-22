@@ -50,8 +50,8 @@ export function ScanInput({ query, status, quota, onChange, onScan, onUpgrade }:
       </div>
       {exhausted && !quota?.is_paid && (
         <p className="mt-2 text-xs text-[#94A3B8]">
-          You&apos;ve used your free scan.{" "}
-          <button type="button" onClick={onUpgrade} className="text-[#6366F1] cursor-pointer hover:underline">Upgrade to Pro</button>
+          You&apos;ve used your free scan. Reopen it from Recent scans below, or{" "}
+          <button type="button" onClick={onUpgrade} className="text-[#6366F1] cursor-pointer hover:underline">upgrade to Pro</button>
           {" "}for 50 scans/month.
         </p>
       )}

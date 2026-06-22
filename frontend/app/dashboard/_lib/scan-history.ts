@@ -26,6 +26,23 @@ export function loadScanHistory(): ScanHistoryEntry[] {
   }
 }
 
+export function mergeScanHistories(
+  local: ScanHistoryEntry[],
+  remote: ScanHistoryEntry[],
+): ScanHistoryEntry[] {
+  const byKey = new Map<string, ScanHistoryEntry>();
+  for (const entry of [...local, ...remote]) {
+    const key = entry.id || entry.query;
+    const existing = byKey.get(key);
+    if (!existing || new Date(entry.scannedAt) > new Date(existing.scannedAt)) {
+      byKey.set(key, entry);
+    }
+  }
+  return [...byKey.values()]
+    .sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime())
+    .slice(0, MAX_ENTRIES);
+}
+
 export function saveScanToHistory(entry: Omit<ScanHistoryEntry, "id" | "scannedAt"> & { id?: string }) {
   if (typeof window === "undefined") return;
   const history = loadScanHistory().filter((h) => h.query !== entry.query);

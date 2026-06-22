@@ -78,6 +78,17 @@ export interface QuotaStatus {
   period_start: string;
 }
 
+export interface ScanHistoryItemApi {
+  scan_id: string;
+  query: string;
+  total_themes: number;
+  theme_count: number;
+  top_theme: string;
+  from_cache: boolean;
+  scanned_at: string;
+  themes: ApiTheme[];
+}
+
 async function authHeaders(getToken?: TokenGetter): Promise<HeadersInit> {
   if (!getToken) return {};
   const token = await getToken();
@@ -133,6 +144,15 @@ export async function fetchReport(scanId: string, getToken?: TokenGetter): Promi
     totalThemes: data.total_themes ?? data.themes.length,
     fromCache: data.from_cache ?? false,
   };
+}
+
+export async function fetchScanHistory(getToken: TokenGetter): Promise<ScanHistoryItemApi[]> {
+  const res = await fetch(`${BASE}/scans/history`, {
+    headers: await authHeaders(getToken),
+  });
+  if (!res.ok) throw new Error(`Failed to fetch scan history: ${res.status}`);
+  const data = await res.json();
+  return (data.scans ?? []) as ScanHistoryItemApi[];
 }
 
 export async function fetchQuota(getToken?: TokenGetter): Promise<QuotaStatus> {

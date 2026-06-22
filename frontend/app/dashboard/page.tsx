@@ -12,12 +12,15 @@ import {
   fetchTrends,
   fetchQuota,
   fetchBillingStatus,
+  fetchScanHistory,
   activatePayPalSubscription,
+  type ScanHistoryItemApi,
 } from "./_lib/api";
 import {
   loadScanHistory,
   saveScanToHistory,
   clearScanHistory,
+  mergeScanHistories,
   type ScanHistoryEntry,
 } from "./_lib/scan-history";
 import { downloadThemesCsv } from "./_lib/export-csv";
@@ -41,7 +44,7 @@ type RadarStatus = "idle" | "loading" | "done" | "error" | "scanning";
 
 export default function Dashboard() {
   const searchParams = useSearchParams();
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
   const [isPro, setIsPro] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeError, setUpgradeError] = useState("");
@@ -76,6 +79,48 @@ export default function Dashboard() {
     setUpgradeOpen(true);
   }, []);
 
+  const serverEntryFromApi = useCallback((item: ScanHistoryItemApi): ScanHistoryEntry => ({
+    id: item.scan_id,
+    query: item.query,
+    scannedAt: item.scanned_at,
+    themeCount: item.theme_count,
+    totalThemes: item.total_themes,
+    topTheme: item.top_theme,
+    fromCache: item.from_cache,
+    themes: item.themes.map((t) => ({
+      name: t.name,
+      summary: t.summary,
+      opportunity: t.opportunity,
+      severity: t.severity_score,
+      mentions: t.mention_count,
+      demand: Math.round(t.demand_score),
+      verdict: t.verdict ?? "Unknown",
+      willingnessToPay: t.willingness_to_pay ?? "Unknown",
+      willingnessReason: t.willingness_reason ?? "",
+      competition: t.competition ?? "",
+      nextStep: t.next_step ?? "",
+      quotes: t.quotes.map((q) => ({ text: q.excerpt, url: q.permalink })),
+    })),
+  }), []);
+
+  const loadHistory = useCallback(async () => {
+    const local = loadScanHistory();
+    if (!isSignedIn) {
+      setScanHistory(local);
+      return;
+    }
+    try {
+      const remote = (await fetchScanHistory(getToken)).map(serverEntryFromApi);
+      const merged = mergeScanHistories(local, remote);
+      setScanHistory(merged);
+      if (typeof window !== "undefined" && remote.length > 0) {
+        localStorage.setItem("thynkk_scan_history", JSON.stringify(merged));
+      }
+    } catch {
+      setScanHistory(local);
+    }
+  }, [getToken, isSignedIn, serverEntryFromApi]);
+
   const refreshAccount = useCallback(async () => {
     try {
       const [billing, q] = await Promise.all([
@@ -87,11 +132,11 @@ export default function Dashboard() {
     } catch {
       fetchQuota(getToken).then(setQuota).catch(() => null);
     }
-  }, [getToken]);
+    await loadHistory();
+  }, [getToken, loadHistory]);
 
   useEffect(() => {
     refreshAccount();
-    setScanHistory(loadScanHistory());
   }, [refreshAccount]);
 
   useEffect(() => {
@@ -144,9 +189,16 @@ export default function Dashboard() {
     }
   }, [mode, radarStatus, loadTrends]);
 
-  const persistScan = useCallback((q: string, reportThemes: Theme[], total: number, cached: boolean) => {
+  const persistScan = useCallback((
+    scanId: string,
+    q: string,
+    reportThemes: Theme[],
+    total: number,
+    cached: boolean,
+  ) => {
     const top = reportThemes[0]?.name ?? "—";
     const updated = saveScanToHistory({
+      id: scanId,
       query: q,
       themeCount: reportThemes.length,
       totalThemes: total,
@@ -168,7 +220,7 @@ export default function Dashboard() {
           setFromCache(report.fromCache);
           setScanTime(new Date());
           setStatus("done");
-          persistScan(s.query, report.themes, report.totalThemes, report.fromCache);
+          persistScan(scanId, s.query, report.themes, report.totalThemes, report.fromCache);
           refreshAccount();
         } else if (s.status === "failed") {
           setErrorMessage(s.error ?? "Scan failed. Try a different niche or subreddit.");
@@ -289,6 +341,16 @@ export default function Dashboard() {
           />
         )}
 
+        {mode === "scanner" && status === "idle" && scanHistory.length > 0 && (
+          <div className="mb-8">
+            <ScanHistory
+              history={scanHistory}
+              onRestore={handleRestore}
+              onClear={handleClearHistory}
+            />
+          </div>
+        )}
+
         {mode === "scanner" && status === "loading" && <ScanningState />}
 
         {mode === "scanner" && status === "error" && (
@@ -344,11 +406,8 @@ export default function Dashboard() {
 
         {mode === "scanner" && status === "idle" && (
           <IdleState
-            history={scanHistory}
             onScan={handleQuickScan}
             onSwitchRadar={() => handleModeChange("radar")}
-            onRestore={handleRestore}
-            onClearHistory={handleClearHistory}
           />
         )}
 

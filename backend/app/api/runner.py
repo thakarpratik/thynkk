@@ -13,6 +13,7 @@ import threading
 from sqlalchemy.engine import Engine
 
 from app.api.models import ScanStatus
+from app.api.scan_history import save_scan
 from app.api.store import ScanStore
 from app.api.admin import log_scan
 from app.scanner.analyze import analyze
@@ -23,7 +24,39 @@ from app.scanner.providers.apify_provider import ApifyProvider
 from app.scanner.scoring import score_themes
 
 
-def _run(scan_id: str, query: str, post_limit: int, store: ScanStore, engine: Engine, ip: str = "unknown") -> None:
+def _persist(
+    engine: Engine,
+    scan_id: str,
+    query: str,
+    themes: list[dict],
+    from_cache: bool,
+    account_key: str,
+    clerk_id: str | None,
+) -> None:
+    try:
+        save_scan(
+            engine,
+            scan_id=scan_id,
+            account_key=account_key,
+            clerk_id=clerk_id,
+            query=query,
+            themes=themes,
+            from_cache=from_cache,
+        )
+    except Exception:
+        pass  # persistence must not fail the scan
+
+
+def _run(
+    scan_id: str,
+    query: str,
+    post_limit: int,
+    store: ScanStore,
+    engine: Engine,
+    ip: str = "unknown",
+    account_key: str = "ip:unknown",
+    clerk_id: str | None = None,
+) -> None:
     store.update(scan_id, status=ScanStatus.running)
     try:
         # 1. Cache check
@@ -31,6 +64,7 @@ def _run(scan_id: str, query: str, post_limit: int, store: ScanStore, engine: En
         if cached:
             store.update(scan_id, status=ScanStatus.done, result=cached, from_cache=True)
             log_scan(ip, query, from_cache=True, status="done", themes_count=len(cached), engine=engine)
+            _persist(engine, scan_id, query, cached, True, account_key, clerk_id)
             return
 
         ensure_tables(engine)
@@ -106,12 +140,26 @@ def _run(scan_id: str, query: str, post_limit: int, store: ScanStore, engine: En
         set_cached(engine, query, scored)
         store.update(scan_id, status=ScanStatus.done, result=scored, from_cache=False)
         log_scan(ip, query, from_cache=False, status="done", themes_count=len(scored), engine=engine)
+        _persist(engine, scan_id, query, scored, False, account_key, clerk_id)
 
     except Exception as exc:
         store.update(scan_id, status=ScanStatus.failed, error=str(exc))
         log_scan(ip, query, from_cache=False, status="failed", themes_count=0, engine=engine)
 
 
-def start_scan(scan_id: str, query: str, post_limit: int, store: ScanStore, engine: Engine, ip: str = "unknown") -> None:
-    t = threading.Thread(target=_run, args=(scan_id, query, post_limit, store, engine, ip), daemon=True)
+def start_scan(
+    scan_id: str,
+    query: str,
+    post_limit: int,
+    store: ScanStore,
+    engine: Engine,
+    ip: str = "unknown",
+    account_key: str = "ip:unknown",
+    clerk_id: str | None = None,
+) -> None:
+    t = threading.Thread(
+        target=_run,
+        args=(scan_id, query, post_limit, store, engine, ip, account_key, clerk_id),
+        daemon=True,
+    )
     t.start()
