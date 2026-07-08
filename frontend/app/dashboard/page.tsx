@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [quota, setQuota] = useState<Awaited<ReturnType<typeof fetchQuota>> | null>(null);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoScanStarted = useRef(false);
 
   const openUpgrade = useCallback(() => {
     setUpgradeError("");
@@ -65,6 +66,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (searchParams.get("upgrade") === "true") openUpgrade();
+    const param = searchParams.get("url");
+    if (param) setUrl(param);
   }, [searchParams, openUpgrade]);
 
   const stopPolling = () => {
@@ -129,6 +132,14 @@ export default function Dashboard() {
     if (!url.trim()) return;
     beginScan(url.trim());
   };
+
+  useEffect(() => {
+    const param = searchParams.get("url");
+    if (!param || !isSignedIn || autoScanStarted.current || status !== "idle") return;
+    autoScanStarted.current = true;
+    beginScan(param);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when landing with ?url=
+  }, [isSignedIn, searchParams, status]);
 
   const handlePayPalSuccess = async (subscriptionId: string) => {
     try {

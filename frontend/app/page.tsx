@@ -4,6 +4,7 @@ import { SiteNav } from "./_components/SiteNav";
 import { SiteFooter } from "./_components/SiteFooter";
 import { PlanCTA } from "./_components/PlanCTA";
 import { LiveActivity } from "./_components/LiveActivity";
+import { HeroScanInput } from "./_components/HeroScanInput";
 
 export const metadata: Metadata = {
   title: "Thynkk — Reddit Growth Engine for Indie Founders",
@@ -32,13 +33,8 @@ export default function LandingPage() {
           <p className="text-xl text-[#94A3B8] max-w-2xl mx-auto mb-10 leading-relaxed">
             Paste your website. Thynkk finds the discussions your customers are already having — and drafts replies you won&apos;t cringe at.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
-            <Link href="/dashboard" className="bg-[#6366F1] hover:bg-[#4F46E5] text-white px-8 py-3.5 rounded-md font-semibold transition-all" style={{ boxShadow: "0 0 24px rgba(99,102,241,0.35)" }}>
-              Scan your site free
-            </Link>
-            <Link href="/dashboard" className="border border-[#1E293B] hover:border-[#6366F1] text-[#F8FAFC] px-8 py-3.5 rounded-md font-semibold transition-all">
-              See how it works
-            </Link>
+          <div className="mb-4">
+            <HeroScanInput />
           </div>
           <p className="text-sm text-[#94A3B8]">Free scan · No credit card</p>
         </div>
@@ -149,9 +145,9 @@ export default function LandingPage() {
             Your customers are already talking.<br /><span className="text-gradient">Join the conversation.</span>
           </h2>
           <p className="text-[#94A3B8] mb-8">Paste your site. Get threads, replies, and post ideas in about a minute.</p>
-          <Link href="/dashboard" className="inline-block bg-[#6366F1] hover:bg-[#4F46E5] text-white px-10 py-3.5 rounded-md font-semibold transition-all" style={{ boxShadow: "0 0 24px rgba(99,102,241,0.35)" }}>
-            Scan your site free
-          </Link>
+          <div className="max-w-xl mx-auto">
+            <HeroScanInput />
+          </div>
         </div>
       </section>
 
