@@ -11,31 +11,50 @@ export function PostIdeaCard({ idea, index, isPro, onUpgrade }: PostIdeaCardProp
   const locked = idea.locked && !isPro;
 
   return (
-    <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-5">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[10px] font-mono text-[#475569]">Post idea #{index + 1}</span>
-        <span className="text-[10px] font-mono text-[#22C55E]">{idea.targetCommunity}</span>
+    <article className="rounded-xl border border-border bg-card p-5 hover:border-primary/30 transition-colors">
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <span className="text-[10px] font-mono font-semibold text-muted-foreground">
+          Post idea {index + 1}
+        </span>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-accent/30 bg-accent/10 text-accent">
+          {idea.targetCommunity}
+        </span>
       </div>
-      <h3 className="font-mono text-sm text-[#F8FAFC] mb-2">{idea.title}</h3>
-      <p className="text-sm text-[#94A3B8] mb-3 leading-relaxed">{idea.hook}</p>
-      <ul className="space-y-1.5 mb-3">
-        {idea.outline.map((line) => (
-          <li key={line} className="text-xs text-[#CBD5E1] flex gap-2">
-            <span className="text-[#6366F1]">·</span>
-            <span>{line}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="text-xs text-[#475569] font-mono">Based on: {idea.basedOnTrend}</p>
-      {locked && (
-        <button
-          type="button"
-          onClick={onUpgrade}
-          className="mt-3 text-xs font-mono text-[#6366F1] hover:underline cursor-pointer"
-        >
-          Upgrade for full outline + more post ideas
-        </button>
-      )}
-    </div>
+
+      <h3 className="font-mono text-base font-semibold text-foreground mb-2">{idea.title}</h3>
+      <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+        <span className="text-primary font-medium">Hook: </span>
+        {idea.hook}
+      </p>
+
+      <div className="rounded-lg bg-muted/40 p-4">
+        <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-3">
+          Outline
+        </p>
+        <ol className="space-y-2">
+          {idea.outline.map((line, i) => (
+            <li key={line} className="flex gap-3 text-sm text-foreground/90">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-mono font-bold">
+                {i + 1}
+              </span>
+              <span className="pt-0.5 leading-relaxed">{line}</span>
+            </li>
+          ))}
+        </ol>
+        {locked && (
+          <button
+            type="button"
+            onClick={onUpgrade}
+            className="mt-4 text-sm font-medium text-primary hover:underline cursor-pointer"
+          >
+            Upgrade for full outline + more ideas
+          </button>
+        )}
+      </div>
+
+      <p className="text-xs text-muted-foreground font-mono mt-4">
+        Inspired by: {idea.basedOnTrend}
+      </p>
+    </article>
   );
 }

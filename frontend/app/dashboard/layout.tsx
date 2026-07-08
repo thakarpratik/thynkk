@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Scan Reddit for pain points and trending niches.",
+  title: "Dashboard — Thynkk",
+  description: "Paste your site, find community conversations, and copy reply drafts.",
   robots: { index: false, follow: false },
 };
 

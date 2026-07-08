@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 
 const STEPS = [
   { label: "Reading your website", at: 0 },
-  { label: "Finding community discussions", at: 12 },
-  { label: "Ranking threads you can join", at: 35 },
-  { label: "Drafting replies and post ideas", at: 55 },
+  { label: "Searching community discussions", at: 12 },
+  { label: "Ranking the best threads to join", at: 35 },
+  { label: "Writing reply drafts & post ideas", at: 55 },
 ];
 
 const ESTIMATED_SEC = 90;
@@ -29,26 +29,65 @@ export function GrowthScanningState() {
   }, []);
 
   const progress = Math.min(95, Math.round((elapsed / ESTIMATED_SEC) * 100));
-  const activeStep = [...STEPS].reverse().find((s) => elapsed >= s.at) ?? STEPS[0];
+  const activeIndex = STEPS.findIndex((s, i) => {
+    const next = STEPS[i + 1];
+    return elapsed >= s.at && (!next || elapsed < next.at);
+  });
 
   return (
-    <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-8">
-      <div className="flex flex-col items-center gap-5 max-w-md mx-auto">
-        <div className="w-8 h-8 border-2 border-[#6366F1] border-t-transparent rounded-full animate-spin" />
-        <div className="text-center w-full">
-          <p className="font-mono text-sm text-[#F8FAFC] mb-1">Building your growth plan…</p>
-          <p className="text-xs text-[#6366F1] font-mono mb-1">{activeStep.label}</p>
-          <p className="text-xs text-[#475569]">
-            Usually takes ~1 min · elapsed {formatElapsed(elapsed)}
+    <section className="rounded-xl border border-border bg-card p-6 sm:p-8 mb-8">
+      <div className="max-w-lg mx-auto">
+        <div className="text-center mb-6">
+          <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
+          <h2 className="font-mono text-lg font-bold text-foreground">Finding your conversations</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Usually takes about a minute · {formatElapsed(elapsed)} elapsed
           </p>
         </div>
-        <div className="w-full bg-[#1A1E2F] rounded-full h-1.5 overflow-hidden">
+
+        <ol className="space-y-3 mb-6">
+          {STEPS.map((step, index) => {
+            const done = index < activeIndex;
+            const current = index === activeIndex;
+            return (
+              <li
+                key={step.label}
+                className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-colors ${
+                  current
+                    ? "bg-primary/10 border border-primary/30 text-foreground"
+                    : done
+                      ? "text-muted-foreground"
+                      : "text-muted-foreground/50"
+                }`}
+              >
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-mono ${
+                    done
+                      ? "bg-accent/20 text-accent"
+                      : current
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {done ? "✓" : index + 1}
+                </span>
+                <span className={current ? "font-medium" : ""}>{step.label}</span>
+              </li>
+            );
+          })}
+        </ol>
+
+        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
           <div
-            className="h-full bg-[#6366F1] rounded-full transition-all duration-1000 ease-out"
+            className="h-full bg-primary rounded-full transition-all duration-1000 ease-out"
             style={{ width: `${progress}%` }}
+            role="progressbar"
+            aria-valuenow={progress}
+            aria-valuemin={0}
+            aria-valuemax={100}
           />
         </div>
       </div>
-    </div>
+    </section>
   );
 }

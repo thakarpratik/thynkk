@@ -13,9 +13,13 @@ import {
   activatePayPalSubscription,
 } from "./_lib/api";
 import { DashboardNav } from "./_components/DashboardNav";
+import { DashboardStepper } from "./_components/DashboardStepper";
 import { GrowthScanInput } from "./_components/GrowthScanInput";
 import { GrowthScanningState } from "./_components/GrowthScanningState";
 import { GrowthIdleState } from "./_components/GrowthIdleState";
+import { GrowthReportSummary } from "./_components/GrowthReportSummary";
+import { ResultsQuickNav } from "./_components/ResultsQuickNav";
+import { SectionHeader } from "./_components/SectionHeader";
 import { ErrorState } from "./_components/ErrorState";
 import { ThreadCard } from "./_components/ThreadCard";
 import { PostIdeaCard } from "./_components/PostIdeaCard";
@@ -146,6 +150,15 @@ export default function Dashboard() {
     beginScan(url.trim());
   };
 
+  const handleNewScan = () => {
+    setStatus("idle");
+    setReport(null);
+    setErrorMessage("");
+    setScanTime(null);
+    stopPolling();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   useEffect(() => {
     const param = searchParams.get("url");
     if (!param || !isLoaded || !isSignedIn || autoScanStarted.current || status !== "idle") return;
@@ -170,15 +183,20 @@ export default function Dashboard() {
   const hiddenPosts = !isPro && report ? Math.max(0, report.totalPostIdeas - report.postIdeas.length) : 0;
 
   return (
-    <div className="min-h-dvh bg-[#020617] text-[#F8FAFC]">
+    <div className="min-h-dvh bg-background text-foreground">
       <DashboardNav isPro={isPro} quota={quota} onUpgrade={openUpgrade} />
 
-      <main className="max-w-4xl mx-auto px-6 pt-20 pb-16">
-        <div className="mb-6">
-          <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-1">Growth engine</p>
-          <h1 className="font-mono text-xl font-bold">Find conversations. Draft your replies.</h1>
-          <p className="text-sm text-[#94A3B8] mt-1">Paste your site — Thynkk finds discussions worth joining.</p>
-        </div>
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-20">
+        <header className="mb-8">
+          <h1 className="font-mono text-2xl sm:text-3xl font-bold tracking-tight">
+            Growth dashboard
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-xl leading-relaxed">
+            Paste your site, find conversations worth joining, and copy reply drafts — in three steps.
+          </p>
+        </header>
+
+        <DashboardStepper status={status} />
 
         <GrowthScanInput
           url={url}
@@ -192,40 +210,38 @@ export default function Dashboard() {
         {status === "loading" && <GrowthScanningState />}
 
         {status === "error" && (
-          <ErrorState message={errorMessage} onRetry={() => { setStatus("idle"); setErrorMessage(""); }} />
+          <ErrorState
+            message={errorMessage}
+            onRetry={() => {
+              setStatus("idle");
+              setErrorMessage("");
+            }}
+          />
         )}
 
         {status === "done" && report && (
-          <div className="space-y-8">
-            <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-5">
-              <p className="text-xs font-mono text-[#475569] uppercase tracking-widest mb-2">Product context</p>
-              <h2 className="font-mono text-lg font-bold text-[#F8FAFC]">{report.productName}</h2>
-              <p className="text-sm text-[#6366F1] font-mono mt-1">{report.nicheLabel}</p>
-              <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">{report.productSummary}</p>
-              <p className="text-xs text-[#475569] mt-2 font-mono">
-                {scannedUrl}
-                {report.fromCache ? " · cached" : ""}
-                {scanTime ? ` · ${scanTime.toLocaleTimeString()}` : ""}
-              </p>
-            </div>
+          <div>
+            <GrowthReportSummary
+              report={report}
+              scannedUrl={scannedUrl}
+              scanTime={scanTime}
+              isPro={isPro}
+              onNewScan={handleNewScan}
+            />
 
-            {report.subreddits.length > 0 && (
-              <div>
-                <p className="text-xs font-mono text-[#475569] uppercase tracking-widest mb-3">Communities to watch</p>
-                <div className="flex flex-wrap gap-2">
-                  {report.subreddits.map((s) => (
-                    <span key={s.name} className="text-xs font-mono px-3 py-1.5 rounded-full border border-[#1E293B] bg-[#0E1223] text-[#94A3B8]" title={s.reason}>
-                      {s.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+            <ResultsQuickNav
+              threadCount={report.threads.length}
+              postCount={report.postIdeas.length}
+              communityCount={report.subreddits.length}
+            />
 
-            <div>
-              <p className="text-xs font-mono text-[#475569] uppercase tracking-widest mb-3">
-                Threads to answer ({report.threads.length}{report.totalThreads > report.threads.length ? ` of ${report.totalThreads}` : ""})
-              </p>
+            <section className="mb-12">
+              <SectionHeader
+                step={1}
+                title="Join these conversations"
+                description="Open a thread, read the discussion, then paste your reply draft. Start with low promo-risk threads."
+                count={`${report.threads.length}${report.totalThreads > report.threads.length ? ` of ${report.totalThreads}` : ""} shown`}
+              />
               <div className="space-y-4">
                 {report.threads.map((thread, i) => (
                   <ThreadCard key={thread.url} thread={thread} index={i} isPro={isPro} onUpgrade={openUpgrade} />
@@ -234,12 +250,15 @@ export default function Dashboard() {
               {!isPro && hiddenThreads > 0 && (
                 <UpgradeStrip variant="growth" hiddenCount={hiddenThreads} onUpgrade={openUpgrade} />
               )}
-            </div>
+            </section>
 
-            <div>
-              <p className="text-xs font-mono text-[#475569] uppercase tracking-widest mb-3">
-                Posts to create ({report.postIdeas.length}{report.totalPostIdeas > report.postIdeas.length ? ` of ${report.totalPostIdeas}` : ""})
-              </p>
+            <section className="mb-12">
+              <SectionHeader
+                step={2}
+                title="Create these posts"
+                description="When replying isn't enough, use these post ideas to start new discussions in the right communities."
+                count={`${report.postIdeas.length}${report.totalPostIdeas > report.postIdeas.length ? ` of ${report.totalPostIdeas}` : ""} shown`}
+              />
               <div className="space-y-4">
                 {report.postIdeas.map((idea, i) => (
                   <PostIdeaCard key={idea.title} idea={idea} index={i} isPro={isPro} onUpgrade={openUpgrade} />
@@ -248,7 +267,28 @@ export default function Dashboard() {
               {!isPro && hiddenPosts > 0 && (
                 <UpgradeStrip variant="growth-posts" hiddenCount={hiddenPosts} onUpgrade={openUpgrade} />
               )}
-            </div>
+            </section>
+
+            {report.subreddits.length > 0 && (
+              <section className="mb-8">
+                <SectionHeader
+                  step={3}
+                  title="Communities to watch"
+                  description="Subreddits and forums where your audience hangs out. Bookmark these for ongoing engagement."
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {report.subreddits.map((s) => (
+                    <div
+                      key={s.name}
+                      className="rounded-xl border border-border bg-card px-4 py-3.5 hover:border-primary/30 transition-colors"
+                    >
+                      <p className="font-mono text-sm font-semibold text-foreground">{s.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{s.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
 

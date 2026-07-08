@@ -1,7 +1,5 @@
 "use client";
 
-import { LiveActivity } from "../../_components/LiveActivity";
-
 interface GrowthIdleStateProps {
   onScan: (url: string) => void;
 }
@@ -12,45 +10,61 @@ const EXAMPLES = [
   { url: "https://cal.com", label: "Cal.com", desc: "Scheduling SaaS" },
 ];
 
-const SAMPLE_THREADS = [
-  { title: "What tool do you use for short-form launch videos?", score: 92, risk: "low" },
-  { title: "How do I get my first 10 users without ads?", score: 88, risk: "low" },
-  { title: "Best alternative to expensive video editors?", score: 81, risk: "medium" },
-];
-
 export function GrowthIdleState({ onScan }: GrowthIdleStateProps) {
   return (
-    <div className="space-y-8 py-4">
-      <LiveActivity variant="compact" />
+    <div className="space-y-6">
+      <div className="rounded-xl border border-dashed border-border bg-card/50 p-6 text-center">
+        <p className="text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
+          Paste your site above and hit <span className="text-foreground font-medium">Start scan</span>.
+          Thynkk reads your product, finds relevant discussions, and drafts replies you can paste into Reddit.
+        </p>
+      </div>
 
       <div>
-        <p className="text-xs font-mono text-[#475569] uppercase tracking-widest mb-3">Try an example</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-3">
+          Or try an example
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {EXAMPLES.map((ex) => (
             <button
               key={ex.url}
+              type="button"
               onClick={() => onScan(ex.url)}
-              className="text-left bg-[#0E1223] border border-[#1E293B] hover:border-[#6366F1]/60 rounded-lg px-4 py-3 transition-all group cursor-pointer"
+              className="text-left rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 px-4 py-3.5 transition-all group cursor-pointer"
             >
-              <p className="font-mono text-sm text-[#F8FAFC] group-hover:text-[#818CF8]">{ex.label}</p>
-              <p className="text-xs text-[#475569] mt-0.5">{ex.desc}</p>
+              <p className="font-mono text-sm font-medium text-foreground group-hover:text-primary">
+                {ex.label}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">{ex.desc}</p>
             </button>
           ))}
         </div>
       </div>
 
-      <div>
-        <p className="text-xs font-mono text-[#475569] uppercase tracking-widest mb-3">Example output</p>
-        <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg overflow-hidden">
-          {SAMPLE_THREADS.map((t, i) => (
-            <div
-              key={t.title}
-              className={`flex items-center justify-between px-4 py-3 ${i < SAMPLE_THREADS.length - 1 ? "border-b border-[#1E293B]" : ""}`}
-            >
-              <span className="text-sm text-[#CBD5E1] truncate pr-4">{t.title}</span>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-mono text-[#6366F1]">{t.score}</span>
-                <span className="text-[10px] font-mono text-[#22C55E]">{t.risk}</span>
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="px-5 py-3 border-b border-border bg-muted/30">
+          <p className="text-xs font-mono text-primary uppercase tracking-widest">What you&apos;ll get</p>
+        </div>
+        <div className="divide-y divide-border">
+          {[
+            {
+              label: "Threads to join",
+              text: "Real discussions where your product fits — ranked by relevance.",
+            },
+            {
+              label: "Reply drafts",
+              text: "Helpful, non-spammy responses you can copy and tweak.",
+            },
+            {
+              label: "Post ideas",
+              text: "Original posts to start conversations in the right communities.",
+            },
+          ].map((row) => (
+            <div key={row.label} className="px-5 py-4 flex gap-4">
+              <span className="text-primary shrink-0 mt-0.5">→</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{row.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{row.text}</p>
               </div>
             </div>
           ))}

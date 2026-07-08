@@ -5,15 +5,23 @@ interface ErrorStateProps {
 
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
-    <div className="bg-[#0E1223] border border-[#EF4444]/30 rounded-lg p-8 text-center">
-      <p className="font-mono text-sm text-[#EF4444] mb-1">Scan failed</p>
-      <p className="text-xs text-[#94A3B8] mb-4">{message}</p>
-      <button
-        onClick={onRetry}
-        className="text-xs border border-[#1E293B] hover:border-[#6366F1] text-[#94A3B8] hover:text-white px-4 py-2 rounded-md font-mono transition-all cursor-pointer"
-      >
-        Try again
-      </button>
-    </div>
+    <section
+      className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 sm:p-8 mb-8"
+      role="alert"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="font-mono text-sm font-semibold text-destructive mb-1">Something went wrong</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="shrink-0 text-sm bg-card border border-border hover:border-primary/50 text-foreground px-5 py-2.5 rounded-lg font-medium transition-colors cursor-pointer"
+        >
+          Try again
+        </button>
+      </div>
+    </section>
   );
 }

@@ -12,17 +12,17 @@ export function DashboardNav({ isPro, quota, onUpgrade }: DashboardNavProps) {
   const quotaLabel = (() => {
     if (!quota) return null;
     if (quota.is_paid) {
-      return `${quota.remaining} scan${quota.remaining === 1 ? "" : "s"} left this month`;
+      return `${quota.remaining} scan${quota.remaining === 1 ? "" : "s"} left`;
     }
     if (quota.remaining === 0) return "Free scan used";
     return `${quota.remaining} free scan`;
   })();
 
   return (
-    <nav className="fixed top-0 w-full z-50 border-b border-[#1E293B] bg-[#020617]/95 backdrop-blur-sm">
-      <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+    <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         <Link href="/" className="font-mono font-bold text-lg tracking-tight shrink-0">
-          thynkk<span className="text-[#6366F1]">.</span>
+          thynkk<span className="text-primary">.</span>
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -30,8 +30,8 @@ export function DashboardNav({ isPro, quota, onUpgrade }: DashboardNavProps) {
             <span
               className={`hidden sm:inline text-xs font-mono px-2.5 py-1 rounded-full border truncate ${
                 quota?.remaining === 0 && !isPro
-                  ? "bg-[#EF4444]/10 text-[#EF4444] border-[#EF4444]/30"
-                  : "bg-[#1A1E2F] text-[#94A3B8] border-[#1E293B]"
+                  ? "bg-destructive/10 text-destructive border-destructive/30"
+                  : "bg-muted text-muted-foreground border-border"
               }`}
             >
               {quotaLabel}
@@ -39,14 +39,14 @@ export function DashboardNav({ isPro, quota, onUpgrade }: DashboardNavProps) {
           )}
 
           {isPro ? (
-            <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 shrink-0">
+            <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-accent/15 text-accent border border-accent/30 shrink-0">
               Pro
             </span>
           ) : (
             <button
               type="button"
               onClick={onUpgrade}
-              className="text-xs sm:text-sm bg-[#6366F1] hover:bg-[#4F46E5] text-white px-3 sm:px-4 py-1.5 rounded-md font-medium font-mono transition-colors cursor-pointer shrink-0"
+              className="text-xs sm:text-sm bg-primary hover:bg-primary/90 text-primary-foreground px-3 sm:px-4 py-1.5 rounded-lg font-medium transition-colors cursor-pointer shrink-0"
             >
               Upgrade
             </button>
