@@ -1,4 +1,4 @@
-import type { Theme } from "../_types";
+import type { GrowthReport, GrowthThread, PostIdea, SubredditHint, Theme } from "../_types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -212,4 +212,128 @@ export async function fetchTrends(refresh = false, getToken?: TokenGetter): Prom
   if (res.status === 503) throw new Error("scanning");
   if (!res.ok) throw new Error(`Failed to fetch trends: ${res.status}`);
   return res.json();
+}
+
+// ── Growth scans ─────────────────────────────────────────────────────────────
+
+interface GrowthStatusResponse {
+  scan_id: string;
+  status: ApiScanStatus;
+  url: string;
+  error: string | null;
+}
+
+interface ApiGrowthThread {
+  title: string;
+  url: string;
+  source: string;
+  snippet: string;
+  intent_type: string;
+  match_reason: string;
+  relevance_score: number;
+  suggested_reply: string;
+  promo_risk: string;
+  locked?: boolean;
+}
+
+interface ApiPostIdea {
+  title: string;
+  hook: string;
+  outline: string[];
+  target_community: string;
+  based_on_trend: string;
+  locked?: boolean;
+}
+
+interface GrowthReportResponse {
+  scan_id: string;
+  url: string;
+  product_name: string;
+  niche_label: string;
+  product_summary: string;
+  audience: string;
+  subreddits: { name: string; reason: string }[];
+  threads: ApiGrowthThread[];
+  post_ideas: ApiPostIdea[];
+  total_threads: number;
+  total_post_ideas: number;
+  from_cache: boolean;
+}
+
+function toGrowthThread(t: ApiGrowthThread): GrowthThread {
+  return {
+    title: t.title,
+    url: t.url,
+    source: t.source,
+    snippet: t.snippet,
+    intentType: t.intent_type,
+    matchReason: t.match_reason,
+    relevanceScore: t.relevance_score,
+    suggestedReply: t.suggested_reply,
+    promoRisk: (t.promo_risk as GrowthThread["promoRisk"]) || "medium",
+    locked: t.locked,
+  };
+}
+
+function toPostIdea(p: ApiPostIdea): PostIdea {
+  return {
+    title: p.title,
+    hook: p.hook,
+    outline: p.outline,
+    targetCommunity: p.target_community,
+    basedOnTrend: p.based_on_trend,
+    locked: p.locked,
+  };
+}
+
+export async function submitGrowthScan(url: string, getToken: TokenGetter): Promise<string> {
+  const res = await fetch(`${BASE}/growth-scans`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(await authHeaders(getToken)),
+    },
+    body: JSON.stringify({ url }),
+  });
+  if (res.status === 429) {
+    const detail = await res.json().catch(() => ({}));
+    const code = detail?.detail?.error ?? "quota_exceeded";
+    throw new Error(code);
+  }
+  if (res.status === 403) {
+    const detail = await res.json().catch(() => ({}));
+    const code = detail?.detail?.error ?? "forbidden";
+    throw new Error(code);
+  }
+  if (!res.ok) throw new Error(`Failed to submit growth scan: ${res.status}`);
+  const data = await res.json();
+  return data.scan_id as string;
+}
+
+export async function pollGrowthStatus(scanId: string): Promise<GrowthStatusResponse> {
+  const res = await fetch(`${BASE}/growth-scans/${scanId}/status`);
+  if (!res.ok) throw new Error(`Failed to poll status: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchGrowthReport(scanId: string, getToken: TokenGetter): Promise<GrowthReport & { scanId: string; url: string }> {
+  const res = await fetch(`${BASE}/growth-scans/${scanId}/report`, {
+    headers: await authHeaders(getToken),
+  });
+  if (!res.ok) throw new Error(`Failed to fetch growth report: ${res.status}`);
+  const data: GrowthReportResponse = await res.json();
+  return {
+    scanId: data.scan_id,
+    url: data.url,
+    productName: data.product_name,
+    nicheLabel: data.niche_label,
+    productSummary: data.product_summary,
+    audience: data.audience,
+    subreddits: data.subreddits as SubredditHint[],
+    threads: data.threads.map(toGrowthThread),
+    postIdeas: data.post_ideas.map(toPostIdea),
+    totalThreads: data.total_threads,
+    totalPostIdeas: data.total_post_ideas,
+    fromCache: data.from_cache,
+  };
 }

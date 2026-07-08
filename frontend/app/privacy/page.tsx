@@ -36,15 +36,15 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-mono font-bold text-lg text-[#F8FAFC] mb-3">3. Reddit data</h2>
-            <p>Thynkk analyses publicly available Reddit posts and comments. We do not access private subreddits, direct messages, or any non-public Reddit content. Excerpts displayed in scan results link back to the original Reddit post so attribution is always clear.</p>
+            <h2 className="font-mono font-bold text-lg text-[#F8FAFC] mb-3">3. Community data</h2>
+            <p>Thynkk discovers publicly indexed community discussions (e.g. Reddit, Quora) via search and links back to the original thread. We do not access private communities, direct messages, or post on your behalf.</p>
           </section>
 
           <section>
             <h2 className="font-mono font-bold text-lg text-[#F8FAFC] mb-3">4. Third-party services</h2>
             <ul className="space-y-2 text-[#94A3B8]">
               <li><span className="text-[#F8FAFC] font-mono">Stripe</span> — payment processing. Subject to Stripe&apos;s privacy policy.</li>
-              <li><span className="text-[#F8FAFC] font-mono">Apify</span> — Reddit data collection. Processes publicly available Reddit content only.</li>
+              <li><span className="text-[#F8FAFC] font-mono">Serper</span> — community thread discovery via web search.</li>
               <li><span className="text-[#F8FAFC] font-mono">Anthropic</span> — AI analysis. Scan content is sent to the Claude API for clustering. Anthropic does not train on API inputs by default.</li>
               <li><span className="text-[#F8FAFC] font-mono">Supabase</span> — database hosting. Data stored in EU/US regions.</li>
             </ul>

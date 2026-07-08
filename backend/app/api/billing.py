@@ -18,6 +18,8 @@ router = APIRouter(prefix="/billing", tags=["billing"])
 
 FREE_THEME_LIMIT = 3
 FREE_RADAR_LIMIT = 3
+FREE_GROWTH_THREAD_LIMIT = 3
+FREE_GROWTH_POST_IDEA_LIMIT = 1
 
 
 def _demand_label(score: float) -> str:
@@ -64,6 +66,49 @@ def gate_theme_for_plan(theme: dict, is_paid: bool) -> dict:
 def gate_themes_for_plan(themes: list, is_paid: bool) -> list:
     visible = themes if is_paid else themes[:FREE_THEME_LIMIT]
     return [gate_theme_for_plan(t, is_paid) for t in visible]
+
+
+def gate_growth_report(report: dict, is_paid: bool) -> dict:
+    """Gate growth scan results for free users."""
+    threads = report.get("threads", [])
+    post_ideas = report.get("post_ideas", [])
+    total_threads = len(threads)
+    total_post_ideas = len(post_ideas)
+
+    if is_paid:
+        return {
+            **report,
+            "threads": threads,
+            "post_ideas": post_ideas,
+            "total_threads": total_threads,
+            "total_post_ideas": total_post_ideas,
+        }
+
+    gated_threads = []
+    for i, t in enumerate(threads[:FREE_GROWTH_THREAD_LIMIT]):
+        reply = t.get("suggested_reply", "")
+        teaser = reply[:120] + ("…" if len(reply) > 120 else "")
+        gated_threads.append({
+            **t,
+            "suggested_reply": teaser,
+            "locked": True,
+        })
+
+    gated_posts = []
+    for i, p in enumerate(post_ideas[:FREE_GROWTH_POST_IDEA_LIMIT]):
+        gated_posts.append({
+            **p,
+            "outline": p.get("outline", [])[:1],
+            "locked": True,
+        })
+
+    return {
+        **report,
+        "threads": gated_threads,
+        "post_ideas": gated_posts,
+        "total_threads": total_threads,
+        "total_post_ideas": total_post_ideas,
+    }
 
 
 def gate_radar_niches(niches: list, is_paid: bool) -> list:

@@ -18,6 +18,7 @@ from starlette.responses import JSONResponse
 # (route_prefix, method) → (max_requests, window_seconds)
 ROUTE_LIMITS: list[tuple[str, str, int, int]] = [
     ("/scans",        "POST", 5,   60),
+    ("/growth-scans", "POST", 5,   60),
     ("/radar",        "GET",  10,  60),
     ("/quota",        "GET",  30,  60),
 ]

@@ -1,0 +1,60 @@
+import type { ScanStatus } from "../_types";
+import type { QuotaStatus } from "../_lib/api";
+
+interface GrowthScanInputProps {
+  url: string;
+  status: ScanStatus;
+  quota: QuotaStatus | null;
+  onChange: (value: string) => void;
+  onScan: () => void;
+  onUpgrade?: () => void;
+}
+
+export function GrowthScanInput({ url, status, quota, onChange, onScan, onUpgrade }: GrowthScanInputProps) {
+  const exhausted = quota !== null && quota.remaining === 0;
+  const isLoading = status === "loading";
+  const disabled = isLoading || !url.trim() || exhausted;
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-2">
+        <label className="block text-xs font-mono text-[#94A3B8] uppercase tracking-widest">
+          Your website
+        </label>
+        {quota && (
+          <span className={`text-xs font-mono ${exhausted ? "text-[#EF4444]" : quota.remaining <= 1 && !quota.is_paid ? "text-[#F59E0B]" : "text-[#475569]"}`}>
+            {exhausted
+              ? quota.is_paid ? "Monthly limit reached" : "Free scan used"
+              : `${quota.remaining} scan${quota.remaining === 1 ? "" : "s"} remaining${quota.is_paid ? " this month" : ""}`
+            }
+          </span>
+        )}
+      </div>
+      <div className="flex gap-3">
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !disabled && onScan()}
+          placeholder="https://yourproduct.com"
+          disabled={exhausted}
+          className="flex-1 bg-[#0E1223] border border-[#1E293B] focus:border-[#6366F1] outline-none text-[#F8FAFC] placeholder:text-[#94A3B8]/50 px-4 py-3 rounded-md text-sm font-mono transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        />
+        <button
+          onClick={onScan}
+          disabled={disabled}
+          className="bg-[#6366F1] hover:bg-[#4F46E5] disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md font-medium text-sm transition-colors cursor-pointer whitespace-nowrap"
+        >
+          {isLoading ? "Scanning..." : "Find conversations"}
+        </button>
+      </div>
+      {exhausted && !quota?.is_paid && (
+        <p className="mt-2 text-xs text-[#94A3B8]">
+          You&apos;ve used your free scan.{" "}
+          <button type="button" onClick={onUpgrade} className="text-[#6366F1] cursor-pointer hover:underline">Upgrade to Pro</button>
+          {" "}for 50 scans/month.
+        </p>
+      )}
+    </div>
+  );
+}

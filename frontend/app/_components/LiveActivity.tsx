@@ -3,36 +3,29 @@
 import { useEffect, useState } from "react";
 
 type Activity =
-  | { kind: "scanning"; name: string; query: string }
-  | { kind: "validated"; name: string; query: string }
-  | { kind: "completed"; name: string; query: string; themes: number };
+  | { kind: "scanning"; name: string; site: string }
+  | { kind: "found"; name: string; site: string; threads: number }
+  | { kind: "drafted"; name: string; site: string };
 
 const ACTIVITIES: Activity[] = [
-  { kind: "scanning", name: "Priya", query: "r/indiehackers" },
-  { kind: "validated", name: "Marcus", query: "r/SaaS" },
-  { kind: "scanning", name: "Tom", query: "freelance invoicing" },
-  { kind: "completed", name: "Aisha", query: "r/smallbusiness", themes: 6 },
-  { kind: "validated", name: "Daniel", query: "solo founder tools" },
-  { kind: "scanning", name: "Lin", query: "r/entrepreneur" },
-  { kind: "completed", name: "James", query: "r/freelance", themes: 5 },
-  { kind: "validated", name: "Sofia", query: "productivity apps" },
-  { kind: "scanning", name: "Omar", query: "r/startups" },
-  { kind: "validated", name: "Elena", query: "r/webdev" },
-  { kind: "completed", name: "Chris", query: "bookkeeping tools", themes: 7 },
-  { kind: "scanning", name: "Nina", query: "r/marketing" },
-  { kind: "validated", name: "Raj", query: "AI meeting tools" },
-  { kind: "scanning", name: "Kate", query: "r/nocode" },
-  { kind: "validated", name: "Ben", query: "r/sales" },
+  { kind: "scanning", name: "Priya", site: "monstareel.com" },
+  { kind: "found", name: "Marcus", site: "cal.com", threads: 8 },
+  { kind: "scanning", name: "Tom", site: "indie-saas.io" },
+  { kind: "drafted", name: "Aisha", site: "horoscope.app" },
+  { kind: "found", name: "Daniel", site: "notion-alternative.dev", threads: 6 },
+  { kind: "scanning", name: "Lin", site: "shipfast.co" },
+  { kind: "drafted", name: "James", site: "reelstudio.ai" },
+  { kind: "found", name: "Sofia", site: "budgettracker.app", threads: 9 },
 ];
 
 function formatActivity(a: Activity): string {
   switch (a.kind) {
     case "scanning":
-      return `${a.name} is scanning ${a.query}…`;
-    case "validated":
-      return `${a.name} just validated an idea on ${a.query}`;
-    case "completed":
-      return `${a.name} found ${a.themes} pain-point themes in ${a.query}`;
+      return `${a.name} is scanning ${a.site}…`;
+    case "found":
+      return `${a.name} found ${a.threads} threads for ${a.site}`;
+    case "drafted":
+      return `${a.name} got reply drafts for ${a.site}`;
   }
 }
 
@@ -68,8 +61,7 @@ export function LiveActivity({ variant = "hero" }: LiveActivityProps) {
     return () => clearInterval(rotate);
   }, []);
 
-  const activity = ACTIVITIES[activityIndex];
-  const message = formatActivity(activity);
+  const message = formatActivity(ACTIVITIES[activityIndex]);
 
   if (variant === "compact") {
     return (
@@ -77,14 +69,10 @@ export function LiveActivity({ variant = "hero" }: LiveActivityProps) {
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse shrink-0" />
           <p className="text-xs font-mono text-[#94A3B8]">
-            <span className="text-[#F8FAFC] font-semibold">{scanCount}</span> founders scanning right now
+            <span className="text-[#F8FAFC] font-semibold">{scanCount}</span> founders finding conversations right now
           </p>
         </div>
-        <p
-          className={`text-xs text-[#475569] font-mono truncate transition-opacity duration-300 ${
-            visible ? "opacity-100" : "opacity-0"
-          }`}
-        >
+        <p className={`text-xs text-[#475569] font-mono truncate transition-opacity duration-300 ${visible ? "opacity-100" : "opacity-0"}`}>
           {message}
         </p>
       </div>
@@ -97,14 +85,10 @@ export function LiveActivity({ variant = "hero" }: LiveActivityProps) {
         <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
         <span>
           <span className="text-[#F8FAFC] font-mono font-semibold tabular-nums">{scanCount}</span>
-          {" "}founders scanning right now
+          {" "}founders finding conversations right now
         </span>
       </div>
-      <p
-        className={`text-sm text-[#475569] font-mono transition-opacity duration-300 min-h-[1.25rem] ${
-          visible ? "opacity-100" : "opacity-0"
-        }`}
-      >
+      <p className={`text-sm text-[#475569] font-mono transition-opacity duration-300 min-h-[1.25rem] ${visible ? "opacity-100" : "opacity-0"}`}>
         {message}
       </p>
     </div>

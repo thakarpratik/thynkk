@@ -1,28 +1,7 @@
-export type Mode = "scanner" | "radar";
 export type ScanStatus = "idle" | "loading" | "done" | "error";
 
-export interface Quote {
-  text: string;
-  url: string;
-}
-
-export interface Theme {
-  name: string;
-  summary: string;
-  opportunity: string;
-  severity: number;
-  mentions: number;
-  demand: number;
-  verdict: string;
-  willingnessToPay: string;
-  willingnessReason: string;
-  competition: string;
-  nextStep: string;
-  quotes: Quote[];
-  demandLabel?: string | null;
-  severityLabel?: string | null;
-  locked?: boolean;
-}
+/** @deprecated Legacy modes — pain scanner removed from dashboard */
+export type Mode = "scanner" | "radar";
 
 export interface TrendItem {
   niche: string;
@@ -38,4 +17,63 @@ export interface TrendItem {
 export interface TrendRadarMeta {
   asOf: Date;
   windowDays: number;
+}
+
+/** @deprecated Legacy pain-scanner types — kept for api.ts compat */
+export interface Theme {
+  name: string;
+  summary: string;
+  opportunity: string;
+  severity: number;
+  mentions: number;
+  demand: number;
+  verdict: string;
+  willingnessToPay: string;
+  willingnessReason: string;
+  competition: string;
+  nextStep: string;
+  quotes: { text: string; url: string }[];
+  demandLabel?: string | null;
+  severityLabel?: string | null;
+  locked?: boolean;
+}
+
+export interface GrowthThread {
+  title: string;
+  url: string;
+  source: string;
+  snippet: string;
+  intentType: string;
+  matchReason: string;
+  relevanceScore: number;
+  suggestedReply: string;
+  promoRisk: "low" | "medium" | "high";
+  locked?: boolean;
+}
+
+export interface PostIdea {
+  title: string;
+  hook: string;
+  outline: string[];
+  targetCommunity: string;
+  basedOnTrend: string;
+  locked?: boolean;
+}
+
+export interface SubredditHint {
+  name: string;
+  reason: string;
+}
+
+export interface GrowthReport {
+  productName: string;
+  nicheLabel: string;
+  productSummary: string;
+  audience: string;
+  subreddits: SubredditHint[];
+  threads: GrowthThread[];
+  postIdeas: PostIdea[];
+  totalThreads: number;
+  totalPostIdeas: number;
+  fromCache: boolean;
 }

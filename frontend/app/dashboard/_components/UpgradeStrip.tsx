@@ -1,5 +1,5 @@
 interface UpgradeStripProps {
-  variant: "scanner" | "radar";
+  variant: "scanner" | "radar" | "growth" | "growth-posts";
   hiddenCount?: number;
   onUpgrade?: () => void;
 }
@@ -7,17 +7,25 @@ interface UpgradeStripProps {
 export function UpgradeStrip({ variant, hiddenCount = 0, onUpgrade }: UpgradeStripProps) {
   const title =
     hiddenCount > 0
-      ? variant === "scanner"
-        ? `${hiddenCount} more theme${hiddenCount === 1 ? "" : "s"} in full report`
-        : `${hiddenCount} more niche${hiddenCount === 1 ? "" : "s"} in full feed`
-      : variant === "scanner"
-        ? "Unlock the full report"
-        : "Unlock the full Trend Radar feed";
+      ? variant === "growth"
+        ? `${hiddenCount} more thread${hiddenCount === 1 ? "" : "s"} with full reply drafts`
+        : variant === "growth-posts"
+          ? `${hiddenCount} more post idea${hiddenCount === 1 ? "" : "s"}`
+          : variant === "scanner"
+            ? `${hiddenCount} more theme${hiddenCount === 1 ? "" : "s"} in full report`
+            : `${hiddenCount} more niche${hiddenCount === 1 ? "" : "s"} in full feed`
+      : variant === "growth" || variant === "growth-posts"
+        ? "Unlock full growth report"
+        : variant === "scanner"
+          ? "Unlock the full report"
+          : "Unlock the full Trend Radar feed";
 
   const subtitle =
-    variant === "scanner"
-      ? "Pro: all themes, exact scores, opportunity analysis, CSV export, 50 scans/month"
-      : "Pro: every trending niche, full momentum data, 50 scans/month";
+    variant === "growth" || variant === "growth-posts"
+      ? "Pro: all threads, full reply drafts, all post ideas, 50 site scans/month"
+      : variant === "scanner"
+        ? "Pro: all themes, exact scores, opportunity analysis, CSV export, 50 scans/month"
+        : "Pro: every trending niche, full momentum data, 50 scans/month";
 
   return (
     <div className="flex items-center justify-between gap-4 px-5 py-4 bg-[#0E1223] border border-[#6366F1]/30 rounded-lg mt-4">

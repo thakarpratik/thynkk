@@ -10,14 +10,14 @@ export function SiteFooter() {
               thynkk<span className="text-[#6366F1]">.</span>
             </span>
             <p className="text-xs text-[#475569] mt-2 leading-relaxed">
-              Market intelligence from Reddit, instantly.
+              The growth engine for indie founders. Find conversations. Draft replies.
             </p>
           </div>
           <div>
             <p className="text-xs font-mono text-[#94A3B8] uppercase tracking-widest mb-3">Product</p>
             <ul className="space-y-2 text-sm text-[#475569]">
-              <li><Link href="/dashboard" className="hover:text-[#94A3B8] transition-colors">Pain Point Scanner</Link></li>
-              <li><Link href="/dashboard?mode=radar" className="hover:text-[#94A3B8] transition-colors">Trend Radar</Link></li>
+              <li><Link href="/dashboard" className="hover:text-[#94A3B8] transition-colors">Growth Scanner</Link></li>
+              <li><Link href="/pricing" className="hover:text-[#94A3B8] transition-colors">Pricing</Link></li>
               <li><Link href="/case-studies" className="hover:text-[#94A3B8] transition-colors">Case studies</Link></li>
               <li><Link href="/methodology" className="hover:text-[#94A3B8] transition-colors">Methodology</Link></li>
             </ul>
