@@ -286,25 +286,33 @@ function toPostIdea(p: ApiPostIdea): PostIdea {
   };
 }
 
+async function parseApiError(res: Response, fallback: string): Promise<never> {
+  const detail = await res.json().catch(() => ({}));
+  const raw = detail?.detail;
+  if (typeof raw === "object" && raw?.error) throw new Error(raw.error);
+  if (typeof raw === "string") {
+    if (raw.toLowerCase().includes("authorization token")) throw new Error("auth_invalid");
+    if (raw.toLowerCase().includes("email")) throw new Error("email_not_verified");
+    throw new Error(raw);
+  }
+  throw new Error(fallback);
+}
+
 export async function submitGrowthScan(url: string, getToken: TokenGetter): Promise<string> {
+  const token = await getToken();
+  if (!token) throw new Error("auth_invalid");
+
   const res = await fetch(`${BASE}/growth-scans`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(await authHeaders(getToken)),
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ url }),
   });
-  if (res.status === 429) {
-    const detail = await res.json().catch(() => ({}));
-    const code = detail?.detail?.error ?? "quota_exceeded";
-    throw new Error(code);
-  }
-  if (res.status === 403) {
-    const detail = await res.json().catch(() => ({}));
-    const code = detail?.detail?.error ?? "forbidden";
-    throw new Error(code);
-  }
+  if (res.status === 401) await parseApiError(res, "auth_invalid");
+  if (res.status === 429) await parseApiError(res, "quota_exceeded");
+  if (res.status === 403) await parseApiError(res, "forbidden");
   if (!res.ok) throw new Error(`Failed to submit growth scan: ${res.status}`);
   const data = await res.json();
   return data.scan_id as string;

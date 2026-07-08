@@ -26,7 +26,7 @@ const POLL_INTERVAL_MS = 3000;
 
 export default function Dashboard() {
   const searchParams = useSearchParams();
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn, isLoaded } = useAuth();
   const [isPro, setIsPro] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeError, setUpgradeError] = useState("");
@@ -61,8 +61,8 @@ export default function Dashboard() {
   }, [getToken]);
 
   useEffect(() => {
-    if (isSignedIn) refreshAccount();
-  }, [isSignedIn, refreshAccount]);
+    if (isLoaded && isSignedIn) refreshAccount();
+  }, [isLoaded, isSignedIn, refreshAccount]);
 
   useEffect(() => {
     if (searchParams.get("upgrade") === "true") openUpgrade();
@@ -100,14 +100,30 @@ export default function Dashboard() {
     }, POLL_INTERVAL_MS);
   }, [getToken, refreshAccount]);
 
-  const beginScan = (targetUrl: string) => {
+  const beginScan = async (targetUrl: string) => {
+    if (!isLoaded) return;
+
     setUrl(targetUrl);
-    setStatus("loading");
     setScannedUrl(targetUrl);
     setReport(null);
     setScanTime(null);
     setErrorMessage("");
     stopPolling();
+
+    if (!isSignedIn) {
+      setErrorMessage("Please sign in to scan your site.");
+      setStatus("error");
+      return;
+    }
+
+    const token = await getToken();
+    if (!token) {
+      setErrorMessage("Session expired. Sign out and sign back in, then try again.");
+      setStatus("error");
+      return;
+    }
+
+    setStatus("loading");
     submitGrowthScan(targetUrl, getToken).then(poll).catch((e: unknown) => {
       if (e instanceof Error) {
         if (e.message === "quota_exceeded") {
@@ -118,6 +134,8 @@ export default function Dashboard() {
           setErrorMessage("Free scan limit reached for this network.");
         } else if (e.message === "email_not_verified") {
           setErrorMessage("Please verify your email before scanning.");
+        } else if (e.message === "auth_invalid") {
+          setErrorMessage("Session expired. Sign out and sign back in, then try again.");
         } else {
           setErrorMessage("Could not start scan. Please try again.");
         }
@@ -135,11 +153,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     const param = searchParams.get("url");
-    if (!param || !isSignedIn || autoScanStarted.current || status !== "idle") return;
+    if (!param || !isLoaded || !isSignedIn || autoScanStarted.current || status !== "idle") return;
     autoScanStarted.current = true;
-    beginScan(param);
+    void beginScan(param);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when landing with ?url=
-  }, [isSignedIn, searchParams, status]);
+  }, [isLoaded, isSignedIn, searchParams, status]);
 
   const handlePayPalSuccess = async (subscriptionId: string) => {
     try {
