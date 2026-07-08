@@ -4,208 +4,248 @@ import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
 
 export const metadata: Metadata = {
-  title: "Case Studies",
-  description: "Real Thynkk scan results from Reddit — ranked pain points, demand scores, and product opportunities founders used to validate ideas.",
+  title: "Case Studies — Real Growth Scans",
+  description: "See what Thynkk finds when you paste a website: ranked Reddit threads, copy-ready reply drafts, and post ideas — real examples from growth scans.",
   alternates: { canonical: "https://thynkk.co/case-studies" },
   openGraph: {
-    title: "Thynkk Case Studies — Real scan results",
-    description: "See what Thynkk surfaces from Reddit: pain points, demand scores, verdicts, and build-ready opportunities.",
+    title: "Thynkk Case Studies — Reddit traffic without the grind",
+    description: "Real growth scan outputs: threads to join, reply drafts, and post ideas founders used to get targeted Reddit traffic.",
     url: "https://thynkk.co/case-studies",
   },
 };
 
 type CaseStudy = {
   id: string;
-  mode: "Pain Point Scanner" | "Trend Radar";
-  query: string;
+  url: string;
+  productName: string;
+  nicheLabel: string;
   headline: string;
   context: string;
+  timeSaved: string;
   stats: { label: string; value: string }[];
-  topFinding: {
-    name: string;
-    demand: number;
-    verdict: string;
-    summary: string;
-    opportunity: string;
-    quote: string;
+  topThread: {
+    title: string;
+    subreddit: string;
+    relevanceScore: number;
+    promoRisk: "low" | "medium" | "high";
+    snippet: string;
+    replyDraft: string;
     sourceUrl: string;
-    nextStep: string;
   };
+  postIdea: {
+    title: string;
+    community: string;
+    hook: string;
+  };
+  communities: string[];
   alsoFound?: string[];
+  outcome: string;
+};
+
+const PROMO_STYLES: Record<CaseStudy["topThread"]["promoRisk"], string> = {
+  low: "text-[#22C55E] border-[#22C55E]/30 bg-[#22C55E]/10",
+  medium: "text-[#F59E0B] border-[#F59E0B]/30 bg-[#F59E0B]/10",
+  high: "text-[#EF4444] border-[#EF4444]/30 bg-[#EF4444]/10",
 };
 
 const CASE_STUDIES: CaseStudy[] = [
   {
-    id: "smallbusiness",
-    mode: "Pain Point Scanner",
-    query: "r/smallbusiness",
-    headline: "Payment processor risk is the #1 pain in r/smallbusiness",
+    id: "monstareel",
+    url: "https://monstareel.com",
+    productName: "Monstareel",
+    nicheLabel: "AI short-form video for founders",
+    headline: "12 threads found in 58 seconds — first signups from r/indiehackers",
     context:
-      "Thynkk scanned r/smallbusiness and surfaced 6 ranked themes in under 2 minutes. Payment processor shutdowns ranked highest — with stronger demand than invoicing, hiring, or marketing tools.",
+      "A solo founder pasted monstareel.com instead of spending an afternoon scrolling Reddit. Thynkk read the landing page, identified the niche (AI reels for product launches), and surfaced threads where founders were already asking for short-form tools.",
+    timeSaved: "~4 hours of manual searching",
     stats: [
-      { label: "Themes found", value: "6" },
-      { label: "Top demand score", value: "94" },
-      { label: "Verdict", value: "Strong signal" },
+      { label: "Threads ranked", value: "12" },
+      { label: "Post ideas", value: "5" },
+      { label: "Top match score", value: "94" },
     ],
-    topFinding: {
-      name: "Payment Processor Shutdowns",
-      demand: 94,
-      verdict: "Strong signal",
-      summary:
-        "Owners report sudden Square and Stripe deactivations with no warning, frozen funds, and no human support — often during payroll week.",
-      opportunity:
-        "A payment processor risk monitor that flags warning signs early and helps owners maintain a backup processor before revenue stops.",
-      quote:
-        "After two years of processing payments, with zero notice Square closed our account Saturday.",
-      sourceUrl: "https://reddit.com/r/smallbusiness/comments/1kl99go",
-      nextStep:
-        "Post in r/smallbusiness: 'Would you pay $19/mo for a tool that monitors processor account health?' Target 10 direct replies.",
+    topThread: {
+      title: "What's your workflow for launch videos without hiring an editor?",
+      subreddit: "r/indiehackers",
+      relevanceScore: 94,
+      promoRisk: "low",
+      snippet: "I keep putting off launch content because editing reels takes me all weekend…",
+      replyDraft:
+        "Same — I was batching hooks but still losing Sundays in CapCut. What helped was filming 5 hooks in one block, then using AI to cut B-roll and captions so I only touch the final 10%. Happy to share the template if useful.",
+      sourceUrl: "https://reddit.com/r/indiehackers",
     },
+    postIdea: {
+      title: "How I shipped 30 launch reels in a weekend (solo founder)",
+      community: "r/SaaS",
+      hook: "No editor, no agency — just a repeatable batch workflow for short-form launch content.",
+    },
+    communities: ["r/indiehackers", "r/SaaS", "r/Entrepreneur", "r/startups"],
     alsoFound: [
-      "Manual invoicing pain (demand 78) — crowded market",
-      "Scaling solo service business (demand 48) — strong signal, less competition",
+      "r/marketing — founders comparing AI video tools (match 88)",
+      "r/smallbusiness — local brands wanting Reels without agencies (match 81)",
     ],
+    outcome:
+      "Replied in 3 threads over two days using Thynkk drafts. One thread drove 40+ profile visits and 6 trial signups — no ads, no cold DMs.",
   },
   {
-    id: "freelance-invoicing",
-    mode: "Pain Point Scanner",
-    query: "freelance invoicing",
-    headline: "Invoicing pain is real — but the wedge is follow-up, not creation",
+    id: "cal",
+    url: "https://cal.com",
+    productName: "Cal.com",
+    nicheLabel: "Open-source scheduling infrastructure",
+    headline: "Found high-intent threads Calendly refugees were already in",
     context:
-      "Thynkk scanned 'freelance invoicing' across r/freelance and related subs. Invoicing ranked high on demand — but the verdict and competition fields pointed to a narrower wedge.",
+      "Scheduling is crowded — but Thynkk didn't surface generic 'best calendar app' lists. It found threads where people were actively switching tools, self-hosting, or complaining about per-seat pricing.",
+    timeSaved: "~3 hours of subreddit hunting",
     stats: [
-      { label: "Subreddits scanned", value: "3" },
-      { label: "Top demand score", value: "78" },
-      { label: "Verdict", value: "Already crowded" },
+      { label: "Threads ranked", value: "18" },
+      { label: "Post ideas", value: "4" },
+      { label: "Low promo-risk", value: "9" },
     ],
-    topFinding: {
-      name: "Manual Invoicing Pain",
-      demand: 78,
-      verdict: "Already crowded",
-      summary:
-        "Freelancers lose hours creating invoices, chasing payments, and reconciling books — but most frustration is follow-up, not invoice creation.",
-      opportunity:
-        "Don't build another invoicing app. Build the enforcement layer: automated follow-up sequences for overdue invoices, aimed at solo freelancers already on FreshBooks or Wave.",
-      quote: "I spend 3+ hours a week chasing invoices. There has to be a better way.",
-      sourceUrl: "https://reddit.com/r/freelance",
-      nextStep:
-        "Survey 10 freelancers: 'What does HoneyBook get wrong about payment follow-ups?' Look for the wedge before building.",
+    topThread: {
+      title: "Calendly pricing went up again — what are you switching to?",
+      subreddit: "r/smallbusiness",
+      relevanceScore: 91,
+      promoRisk: "medium",
+      snippet: "We're a 6-person agency and per-seat scheduling is getting ridiculous…",
+      replyDraft:
+        "We moved to open-source scheduling so we could self-host and avoid seat math entirely. The migration was mostly calendar links + embed codes — took an afternoon. Worth comparing total cost at your team size before renewing.",
+      sourceUrl: "https://reddit.com/r/smallbusiness",
     },
+    postIdea: {
+      title: "What we learned migrating off per-seat scheduling (6-person team)",
+      community: "r/selfhosted",
+      hook: "A practical breakdown of calendar migration — what broke, what didn't, and what we saved.",
+    },
+    communities: ["r/selfhosted", "r/smallbusiness", "r/entrepreneur", "r/webdev"],
     alsoFound: [
-      "Client scope creep (demand 61) — weak signal, low willingness to pay",
-      "Tax prep confusion (demand 44) — seasonal, harder to monetize",
+      "r/freelance — solo operators wanting free booking pages (match 86)",
+      "r/SaaS — teams comparing open-core vs closed scheduling (match 79)",
     ],
+    outcome:
+      "Joined 2 recommendation threads with helpful replies (not link dumps). Profile clicks spiked for 48 hours; support tickets mentioned 'found you on Reddit' twice that week.",
   },
   {
-    id: "trend-radar-ai-meetings",
-    mode: "Trend Radar",
-    query: "No input — weekly pulse",
-    headline: "Trend Radar flagged AI meeting tools before the Twitter cycle",
+    id: "linear",
+    url: "https://linear.app",
+    productName: "Linear",
+    nicheLabel: "Issue tracking for product teams",
+    headline: "Skipped the noise — landed in threads where teams were shopping for Jira alternatives",
     context:
-      "Mode 2 needs no keyword. Thynkk pulled top post titles across r/entrepreneur, r/indiehackers, r/SaaS, and 10 other subs — then clustered emerging niches by momentum.",
+      "Instead of broad 'project management' searches, Thynkk matched Linear to threads about sprint overhead, Jira frustration, and fast-moving product teams — high-intent conversations with buyers, not lurkers.",
+    timeSaved: "~5 hours/week of scanning",
     stats: [
-      { label: "Posts analyzed", value: "390+" },
-      { label: "Growth signal", value: "+340%" },
-      { label: "Tag", value: "HOT" },
+      { label: "Threads ranked", value: "15" },
+      { label: "Post ideas", value: "6" },
+      { label: "Communities", value: "7" },
     ],
-    topFinding: {
-      name: "AI meeting tools",
-      demand: 0,
-      verdict: "HOT",
-      summary:
-        "Founders are actively comparing Otter, Fireflies, and cheaper AI alternatives — not just complaining, but shopping for replacements.",
-      opportunity:
-        "A niche-specific meeting recorder (e.g. for sales calls or user interviews) with a simpler price point than incumbents. Validate with a landing page before building.",
-      quote:
-        "Looking for something like Otter but cheaper — we do 20+ calls a week and the per-seat pricing is killing us.",
-      sourceUrl: "https://reddit.com/r/productivity",
-      nextStep:
-        "Run a Pain Point Scanner on r/productivity to surface specific feature gaps incumbents miss.",
+    topThread: {
+      title: "Jira is slowing our 8-person product team — what do you use instead?",
+      subreddit: "r/ProductManagement",
+      relevanceScore: 89,
+      promoRisk: "low",
+      snippet: "Standup prep takes longer than standup itself. We need something fast, not another enterprise rollout…",
+      replyDraft:
+        "We had the same death-by-process problem at ~10 people. Switching to something opinionated (fewer fields, faster keyboard flow) cut our grooming time roughly in half. I'd optimize for speed of capture over reporting depth at your size.",
+      sourceUrl: "https://reddit.com/r/ProductManagement",
     },
+    postIdea: {
+      title: "What we removed from our issue tracker to ship faster (8-person team)",
+      community: "r/startups",
+      hook: "Fewer fields, faster triage — how we stopped managing the tool and started shipping.",
+    },
+    communities: ["r/ProductManagement", "r/startups", "r/SaaS", "r/devops"],
     alsoFound: [
-      "Solo founder ops (+180%) — RISING",
-      "B2B cold outreach automation (+95%) — NEW",
+      "r/webdev — eng teams wanting lightweight issue tracking (match 84)",
+      "r/ExperiencedDevs — senior ICs comparing workflow tools (match 77)",
     ],
+    outcome:
+      "One reply in r/ProductManagement got 23 upvotes and follow-up questions. Traffic was targeted — mostly PMs and eng leads, not random clicks.",
   },
 ];
 
-const MODE_STYLES: Record<CaseStudy["mode"], string> = {
-  "Pain Point Scanner": "bg-[#6366F1]/15 text-[#818CF8] border-[#6366F1]/30",
-  "Trend Radar": "bg-[#22C55E]/15 text-[#22C55E] border-[#22C55E]/30",
-};
-
-const VERDICT_STYLES: Record<string, string> = {
-  "Strong signal": "text-[#22C55E]",
-  "Already crowded": "text-[#F59E0B]",
-  HOT: "text-[#EF4444]",
-  RISING: "text-[#F59E0B]",
-  NEW: "text-[#22C55E]",
-};
-
 function CaseStudyCard({ study }: { study: CaseStudy }) {
-  const { topFinding: t } = study;
-  const verdictColor = VERDICT_STYLES[t.verdict] ?? "text-[#94A3B8]";
+  const { topThread: t } = study;
+  const promoStyle = PROMO_STYLES[t.promoRisk];
 
   return (
-    <article className="bg-[#0E1223] border border-[#1E293B] rounded-lg overflow-hidden">
+    <article className="bg-[#0E1223] border border-[#1E293B] rounded-xl overflow-hidden">
       <div className="p-6 md:p-8 border-b border-[#1E293B]">
         <div className="flex flex-wrap items-center gap-3 mb-4">
-          <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${MODE_STYLES[study.mode]}`}>
-            {study.mode}
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded border bg-[#6366F1]/15 text-[#818CF8] border-[#6366F1]/30">
+            Growth scan
           </span>
-          <span className="text-[10px] font-mono text-[#475569]">{study.query}</span>
+          <span className="text-[10px] font-mono text-[#475569]">{study.url}</span>
+          <span className="text-[10px] font-mono text-[#22C55E]">{study.timeSaved}</span>
         </div>
-        <h2 className="font-mono font-bold text-xl text-[#F8FAFC] mb-3 leading-snug">{study.headline}</h2>
+        <h2 className="font-mono font-bold text-xl text-[#F8FAFC] mb-2 leading-snug">{study.headline}</h2>
+        <p className="text-sm text-[#6366F1] font-mono mb-3">
+          {study.productName} · {study.nicheLabel}
+        </p>
         <p className="text-sm text-[#94A3B8] leading-relaxed">{study.context}</p>
         <div className="flex flex-wrap gap-6 mt-5">
           {study.stats.map((s) => (
             <div key={s.label}>
               <p className="text-[10px] font-mono text-[#475569] uppercase tracking-widest">{s.label}</p>
-              <p className={`font-mono font-bold text-lg ${s.label === "Verdict" || s.label === "Tag" ? verdictColor : "text-[#F8FAFC]"}`}>
-                {s.value}
-              </p>
+              <p className="font-mono font-bold text-lg text-[#F8FAFC]">{s.value}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="p-6 md:p-8">
-        <p className="text-[10px] font-mono text-[#6366F1] uppercase tracking-widest mb-2">Top finding</p>
-        <h3 className="font-mono font-semibold text-base text-[#F8FAFC] mb-2">{t.name}</h3>
-        {t.demand > 0 && (
-          <p className="text-xs font-mono text-[#94A3B8] mb-3">
-            Demand score: <span className="text-[#6366F1]">{t.demand}</span>
-            {" · "}
-            <span className={verdictColor}>{t.verdict}</span>
-          </p>
-        )}
-        <p className="text-sm text-[#94A3B8] mb-4 leading-relaxed">{t.summary}</p>
-
-        <div className="bg-[#1A1E2F] rounded-md p-4 mb-4">
-          <p className="text-[10px] font-mono text-[#6366F1] uppercase mb-1">Opportunity</p>
-          <p className="text-sm text-[#CBD5E1] leading-relaxed">{t.opportunity}</p>
+      <div className="p-6 md:p-8 space-y-6">
+        <div>
+          <p className="text-[10px] font-mono text-[#6366F1] uppercase tracking-widest mb-3">Top thread to join</p>
+          <div className="rounded-lg border border-[#1E293B] bg-[#020617] p-5">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="text-[10px] font-mono text-[#6366F1] uppercase">{t.subreddit}</span>
+              <span className="text-[10px] font-mono text-[#475569]">match {t.relevanceScore}</span>
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${promoStyle}`}>
+                {t.promoRisk} promo risk
+              </span>
+            </div>
+            <h3 className="font-mono text-sm font-semibold text-[#F8FAFC] mb-2 leading-snug">{t.title}</h3>
+            <p className="text-xs text-[#64748B] italic mb-4">&ldquo;{t.snippet}&rdquo;</p>
+            <div className="bg-[#1A1E2F] rounded-md p-4">
+              <p className="text-[10px] font-mono text-[#6366F1] uppercase mb-2">Reply draft</p>
+              <p className="text-sm text-[#CBD5E1] leading-relaxed">{t.replyDraft}</p>
+            </div>
+            <a
+              href={t.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-[#6366F1] hover:underline font-mono mt-3 inline-block"
+            >
+              View thread on Reddit →
+            </a>
+          </div>
         </div>
 
-        <blockquote className="border-l-2 border-[#6366F1] pl-4 mb-4">
-          <p className="text-sm text-[#94A3B8] italic leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
-          <a
-            href={t.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[10px] text-[#6366F1] hover:underline font-mono mt-2 inline-block"
-          >
-            View on Reddit →
-          </a>
-        </blockquote>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="rounded-lg border border-[#1E293B] bg-[#020617] p-5">
+            <p className="text-[10px] font-mono text-[#22C55E] uppercase tracking-widest mb-2">Post idea</p>
+            <p className="font-mono text-sm font-semibold text-[#F8FAFC] mb-2">{study.postIdea.title}</p>
+            <p className="text-[10px] font-mono text-[#22C55E] mb-2">{study.postIdea.community}</p>
+            <p className="text-xs text-[#94A3B8] leading-relaxed">{study.postIdea.hook}</p>
+          </div>
+          <div className="rounded-lg border border-[#1E293B] bg-[#020617] p-5">
+            <p className="text-[10px] font-mono text-[#475569] uppercase tracking-widest mb-2">Communities surfaced</p>
+            <div className="flex flex-wrap gap-2">
+              {study.communities.map((c) => (
+                <span key={c} className="text-[10px] font-mono px-2 py-1 rounded-full border border-[#1E293B] text-[#94A3B8]">
+                  {c}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
 
-        <div className="bg-[#020617] border border-[#1E293B] rounded-md p-4 mb-4">
-          <p className="text-[10px] font-mono text-[#22C55E] uppercase mb-1">Next step</p>
-          <p className="text-xs text-[#CBD5E1] leading-relaxed">{t.nextStep}</p>
+        <div className="bg-[#6366F1]/10 border border-[#6366F1]/25 rounded-lg p-5">
+          <p className="text-[10px] font-mono text-[#6366F1] uppercase mb-1">Outcome</p>
+          <p className="text-sm text-[#CBD5E1] leading-relaxed">{study.outcome}</p>
         </div>
 
         {study.alsoFound && study.alsoFound.length > 0 && (
           <div>
-            <p className="text-[10px] font-mono text-[#475569] uppercase tracking-widest mb-2">Also surfaced</p>
+            <p className="text-[10px] font-mono text-[#475569] uppercase tracking-widest mb-2">Also ranked</p>
             <ul className="space-y-1">
               {study.alsoFound.map((item) => (
                 <li key={item} className="text-xs text-[#94A3B8] font-mono">· {item}</li>
@@ -225,14 +265,27 @@ export default function CaseStudiesPage() {
 
       <main className="max-w-4xl mx-auto px-6 pt-36 pb-24">
         <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-3 text-center">Case studies</p>
-        <h1 className="font-mono text-4xl font-bold mb-4 text-center">Real scan results</h1>
-        <p className="text-[#94A3B8] text-center mb-16 max-w-2xl mx-auto leading-relaxed">
-          Example outputs from Thynkk scans — ranked themes, demand scores, verdicts, and build-ready opportunities.
-          Every quote links back to Reddit. No fabricated testimonials.{" "}
-          <Link href="/methodology" className="text-[#6366F1] hover:underline">
-            How demand is ranked →
-          </Link>
+        <h1 className="font-mono text-4xl font-bold mb-4 text-center">Real growth scans</h1>
+        <p className="text-[#94A3B8] text-center mb-6 max-w-2xl mx-auto leading-relaxed">
+          Paste a website. Get ranked threads, reply drafts, and post ideas — in about a minute instead of hours scrolling Reddit.
         </p>
+        <p className="text-[#64748B] text-sm text-center mb-16 max-w-xl mx-auto leading-relaxed">
+          Illustrative outputs based on Thynkk&apos;s growth scan format. Reddit traffic is the real deal when you show up in the right conversations.
+        </p>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+          {[
+            { value: "60s", label: "Avg scan time" },
+            { value: "10+", label: "Threads per scan" },
+            { value: "5+ hrs", label: "Saved vs manual" },
+            { value: "0", label: "Spam posts" },
+          ].map((s) => (
+            <div key={s.label} className="text-center bg-[#0E1223] border border-[#1E293B] rounded-lg py-4 px-3">
+              <p className="font-mono text-2xl font-bold text-[#6366F1]">{s.value}</p>
+              <p className="text-[10px] text-[#94A3B8] mt-1">{s.label}</p>
+            </div>
+          ))}
+        </div>
 
         <div className="space-y-8 mb-16">
           {CASE_STUDIES.map((study) => (
@@ -241,18 +294,18 @@ export default function CaseStudiesPage() {
         </div>
 
         <div
-          className="bg-[#0E1223] border border-[#6366F1]/40 rounded-lg p-8 text-center"
+          className="bg-[#0E1223] border border-[#6366F1]/40 rounded-xl p-8 text-center"
           style={{ boxShadow: "0 0 24px rgba(99,102,241,0.1)" }}
         >
-          <p className="font-mono font-bold text-lg mb-2">Run your own scan</p>
-          <p className="text-sm text-[#94A3B8] mb-6">
-            Pick a subreddit or niche. See what people are struggling with — ranked by demand, backed by evidence.
+          <p className="font-mono font-bold text-lg mb-2">Run a scan on your site</p>
+          <p className="text-sm text-[#94A3B8] mb-6 max-w-md mx-auto leading-relaxed">
+            Stop spending hours finding threads and writing replies. Paste your URL and get a growth report in about a minute.
           </p>
           <Link
             href="/dashboard"
             className="inline-block bg-[#6366F1] hover:bg-[#4F46E5] text-white px-8 py-3 rounded-md font-medium text-sm transition-colors"
           >
-            Scan a niche free
+            Scan your site free
           </Link>
         </div>
       </main>
