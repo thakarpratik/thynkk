@@ -19,16 +19,36 @@ from app.middleware.rate_limit import RateLimitMiddleware
 
 load_dotenv()
 
+_DEFAULT_CORS = ",".join([
+    "https://thynkk.co",
+    "https://www.thynkk.co",
+    "http://localhost:3000",
+])
+
+
+def _cors_origins() -> list[str]:
+    raw = os.environ.get("CORS_ORIGINS", _DEFAULT_CORS)
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    # Always allow production domains (www vs apex are different CORS origins)
+    for required in ("https://thynkk.co", "https://www.thynkk.co"):
+        if required not in origins:
+            origins.append(required)
+    return origins
+
+
 app = FastAPI(title="Thynkk API", version="0.1.0")
 
 # Rate limiting before CORS so abusive requests are dropped immediately
 app.add_middleware(RateLimitMiddleware)
 
+# CORS must be outermost — added last so preflight and error responses get headers
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(","),
+    allow_origins=_cors_origins(),
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    expose_headers=["Retry-After"],
 )
 
 # DB engine created once at startup and shared across requests
