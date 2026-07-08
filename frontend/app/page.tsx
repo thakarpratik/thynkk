@@ -7,12 +7,12 @@ import { LiveActivity } from "./_components/LiveActivity";
 import { HeroScanInput } from "./_components/HeroScanInput";
 
 export const metadata: Metadata = {
-  title: "Thynkk — Targeted Organic Traffic for Indie Founders",
-  description: "Thynkk helps you get targeted traffic the organic, legit way — by joining real community discussions, not spamming links. Paste your site for reply drafts and post ideas.",
+  title: "Thynkk — Reddit Traffic Without the Hours of Grinding",
+  description: "Stop spending hours scanning Reddit, hunting threads, and writing replies. Thynkk finds the conversations, drafts your responses, and helps you get real targeted traffic — the organic way.",
   alternates: { canonical: "https://thynkk.co" },
   openGraph: {
-    title: "Thynkk — Targeted Organic Traffic for Indie Founders",
-    description: "Get targeted traffic organically. Find conversations worth joining. Copy reply drafts and post ideas — no spam, no ads.",
+    title: "Thynkk — Reddit Traffic Without the Hours of Grinding",
+    description: "Hours of Reddit scanning → one-minute scan. Find threads, copy reply drafts, get targeted organic traffic. Reddit is the real deal.",
     url: "https://thynkk.co",
   },
 };
@@ -25,16 +25,16 @@ export default function LandingPage() {
       <section className="pt-40 pb-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <LiveActivity />
-          <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">Targeted traffic · Organic · Legit</p>
+          <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">Reddit traffic is the real deal</p>
           <h1 className="font-mono text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Stop launching into<br />
-            <span className="text-gradient">silence.</span>
+            Hours of scanning.<br />
+            <span className="text-gradient">Done in 60 seconds.</span>
           </h1>
           <p className="text-xl text-[#94A3B8] max-w-2xl mx-auto mb-4 leading-relaxed">
-            Thynkk is your tool to get <span className="text-[#F8FAFC]">targeted traffic</span> — the organic, legit way. No paid ads. No spam blasts.
+            You know Reddit works — but finding the right threads, writing replies, and showing up consistently eats <span className="text-[#F8FAFC]">hours every week</span>. Thynkk does the grind for you.
           </p>
           <p className="text-base text-[#64748B] max-w-xl mx-auto mb-10 leading-relaxed">
-            Paste your website and we&apos;ll find the discussions your ideal customers are already having — with reply drafts and post ideas you can use today.
+            Paste your site. We scan communities, rank the conversations worth joining, and draft replies you can paste — so you get targeted, organic traffic without living on Reddit.
           </p>
           <div className="mb-4">
             <HeroScanInput />
@@ -44,17 +44,57 @@ export default function LandingPage() {
       </section>
 
       <section className="py-20 px-6 border-t border-[#1E293B]">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">What you&apos;re replacing</p>
+          <h2 className="font-mono text-3xl font-bold text-center mb-4">The manual grind vs. one scan</h2>
+          <p className="text-center text-[#94A3B8] text-sm max-w-2xl mx-auto mb-12 leading-relaxed">
+            Most founders spend 3–5 hours a week scrolling subreddits, searching for threads, and staring at a blank reply box. Thynkk compresses that into a single scan.
+          </p>
+          <div className="grid md:grid-cols-2 gap-6 mb-16">
+            <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-8">
+              <p className="text-xs font-mono text-[#EF4444] uppercase tracking-widest mb-4">The old way</p>
+              <ul className="space-y-3 text-sm text-[#94A3B8]">
+                {[
+                  "Scroll r/indiehackers, r/SaaS, r/entrepreneur for hours",
+                  "Ctrl+F and hope you find a relevant thread",
+                  "Write replies from scratch — or skip and lose the lead",
+                  "Repeat tomorrow. And the next day.",
+                ].map((item) => (
+                  <li key={item} className="flex gap-3">
+                    <span className="text-[#EF4444] shrink-0">✕</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-[#0E1223] border border-[#6366F1]/40 rounded-lg p-8" style={{ boxShadow: "0 0 24px rgba(99,102,241,0.12)" }}>
+              <p className="text-xs font-mono text-[#22C55E] uppercase tracking-widest mb-4">With Thynkk</p>
+              <ul className="space-y-3 text-sm text-[#94A3B8]">
+                {[
+                  "Paste your URL — we read your product and niche",
+                  "Get ranked threads where your product actually fits",
+                  "Copy reply drafts and post ideas, ready to go",
+                  "Show up in minutes, not hours",
+                ].map((item) => (
+                  <li key={item} className="flex gap-3">
+                    <span className="text-[#22C55E] shrink-0">✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
           <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">How it works</p>
-          <h2 className="font-mono text-3xl font-bold text-center mb-4">How you get targeted traffic — without ads</h2>
+          <h2 className="font-mono text-3xl font-bold text-center mb-4">Find. Reply. Get traffic.</h2>
           <p className="text-center text-[#94A3B8] text-sm max-w-xl mx-auto mb-12 leading-relaxed">
-            Show up where your audience already talks. Add value first. Let the right people discover you naturally.
+            Reddit traffic is the real deal — people asking for recommendations, comparing tools, and ready to buy. Thynkk finds those moments for you.
           </p>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { step: "01", title: "Paste your URL", desc: "We learn your product, niche, and who you need to reach.", color: "#6366F1" },
-              { step: "02", title: "Find live threads", desc: "We surface community discussions where your product genuinely fits.", color: "#818CF8" },
-              { step: "03", title: "Get copy-ready drafts", desc: "Helpful replies and post ideas — organic reach, not link-dropping.", color: "#22C55E" },
+              { step: "01", title: "Paste your URL", desc: "We learn your product and who you need to reach — no manual research.", color: "#6366F1" },
+              { step: "02", title: "We find the threads", desc: "Skip hours of scrolling. Get ranked Reddit discussions where you can add real value.", color: "#818CF8" },
+              { step: "03", title: "Copy & reply", desc: "Drafted replies and post ideas you paste in — targeted traffic without the grind.", color: "#22C55E" },
             ].map((item) => (
               <div key={item.step} className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-8">
                 <p className="text-xs font-mono mb-3" style={{ color: item.color }}>{item.step}</p>
@@ -68,7 +108,10 @@ export default function LandingPage() {
 
       <section className="py-20 px-6 border-t border-[#1E293B]">
         <div className="max-w-3xl mx-auto">
-          <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">What targeted traffic looks like</p>
+          <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">What you get in ~60 seconds</p>
+          <p className="text-center text-[#94A3B8] text-sm max-w-lg mx-auto mb-8 leading-relaxed">
+            Real threads. Real reply drafts. The kind of Reddit traffic that actually converts — not vanity clicks.
+          </p>
           <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-6 font-mono text-sm space-y-4">
             {[
               { label: "Thread", text: "What tool do you use for launch videos?", meta: "recommendation · low promo risk" },
@@ -88,10 +131,10 @@ export default function LandingPage() {
       <section className="py-16 px-6 border-t border-[#1E293B]">
         <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
-            { value: "100%", label: "Organic traffic" },
-            { value: "10+", label: "Threads to join" },
-            { value: "60s", label: "Avg scan time" },
-            { value: "0", label: "Spam posts sent" },
+            { value: "5+ hrs", label: "Saved per week" },
+            { value: "60s", label: "Not hours scanning" },
+            { value: "10+", label: "Threads ranked" },
+            { value: "Real", label: "Reddit traffic" },
           ].map((s) => (
             <div key={s.label} className="text-center">
               <div className="font-mono text-3xl font-bold text-[#6366F1] mb-1">{s.value}</div>
@@ -148,10 +191,10 @@ export default function LandingPage() {
       <section className="py-24 px-6 border-t border-[#1E293B]">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="font-mono text-4xl font-bold mb-4">
-            Your next customers are already talking.<br /><span className="text-gradient">Reach them the right way.</span>
+            Reddit traffic works.<br /><span className="text-gradient">Stop grinding for it.</span>
           </h2>
           <p className="text-[#94A3B8] mb-8 max-w-lg mx-auto leading-relaxed">
-            Start getting targeted, organic traffic today. Paste your site — threads, reply drafts, and post ideas in about a minute.
+            Your customers are on Reddit right now, asking for tools like yours. Paste your site — find the threads, copy the replies, skip the hours.
           </p>
           <div className="max-w-xl mx-auto">
             <HeroScanInput />
