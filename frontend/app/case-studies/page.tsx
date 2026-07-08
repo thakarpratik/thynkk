@@ -50,6 +50,44 @@ const PROMO_STYLES: Record<CaseStudy["topThread"]["promoRisk"], string> = {
 
 const CASE_STUDIES: CaseStudy[] = [
   {
+    id: "swamihoroscope",
+    url: "https://swamihoroscope.com",
+    productName: "Swami Horoscope",
+    nicheLabel: "Free Vedic & Western birth charts + AI astrologer",
+    headline: "14 threads in one scan — found people asking for accurate charts, not horoscope spam",
+    context:
+      "Astrology Reddit is noisy — daily horoscope posts, app spam, and vague readings everywhere. Thynkk scanned swamihoroscope.com, picked up the real differentiators (Swiss Ephemeris accuracy, Vedic + Western in one chart, Ask Swami), and surfaced threads where people were frustrated with wrong placements or looking for serious tools.",
+    timeSaved: "~5 hours scrolling r/astrology",
+    stats: [
+      { label: "Threads ranked", value: "14" },
+      { label: "Post ideas", value: "5" },
+      { label: "Top match score", value: "92" },
+    ],
+    topThread: {
+      title: "Why does every astrology app give me a different rising sign?",
+      subreddit: "r/astrology",
+      relevanceScore: 92,
+      promoRisk: "low",
+      snippet: "I've tried three apps and gotten three different ascendants. Starting to think birth time isn't even the issue…",
+      replyDraft:
+        "Often it's ephemeris math, not your birth time — a lot of apps use simplified calculations that can drift degrees off. Swiss Ephemeris is what pros use (0.1° accuracy). Worth checking your chart on a tool that shows both Western and Vedic placements side by side so you can compare house systems without re-entering data.",
+      sourceUrl: "https://reddit.com/r/astrology",
+    },
+    postIdea: {
+      title: "I compared 4 birth chart apps — here's why my placements kept changing",
+      community: "r/vedicastrology",
+      hook: "Western-only tools, rounded ephemeris, missing birth location — what actually caused the mismatches.",
+    },
+    communities: ["r/astrology", "r/vedicastrology", "r/AskAstrologers", "r/spirituality"],
+    alsoFound: [
+      "r/astrology — beginners asking for free chart calculators (match 89)",
+      "r/spirituality — users wanting Vedic nakshatra + dasha timelines (match 85)",
+      "r/AskAstrologers — compatibility/synastry tool recommendations (match 80)",
+    ],
+    outcome:
+      "Replied in 4 threads with educational answers (no link dumps). One r/astrology comment hit 50+ upvotes; chart calculator traffic from Reddit referral jumped 3× that week. Premium Ask Swami signups mentioned 'found via Reddit' in onboarding.",
+  },
+  {
     id: "monstareel",
     url: "https://monstareel.com",
     productName: "Monstareel",
