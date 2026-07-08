@@ -10,9 +10,12 @@ if sys.stderr.encoding != "utf-8":
 os.environ.setdefault("PYTHONUTF8", "1")
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 
 from app.scanner.harvest import get_engine
 from app.middleware.rate_limit import RateLimitMiddleware
@@ -37,6 +40,16 @@ def _cors_origins() -> list[str]:
 
 
 app = FastAPI(title="Thynkk API", version="0.1.0")
+
+_DB_UNAVAILABLE = (
+    "Database unavailable. Update DATABASE_URL on Railway with a valid Supabase connection string."
+)
+
+
+@app.exception_handler(OperationalError)
+async def database_unavailable(_request: Request, _exc: OperationalError) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": _DB_UNAVAILABLE})
+
 
 # Rate limiting before CORS so abusive requests are dropped immediately
 app.add_middleware(RateLimitMiddleware)
@@ -75,4 +88,9 @@ app.include_router(billing_router)
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    try:
+        with db_engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "ok"}
+    except OperationalError:
+        return {"status": "degraded", "database": "unavailable"}
