@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API =
+  typeof window !== "undefined"
+    ? "/api/backend"
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
 
 interface ScanLogEntry {
   id: number;

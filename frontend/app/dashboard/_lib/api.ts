@@ -1,6 +1,10 @@
 import type { GrowthReport, GrowthThread, PostIdea, SubredditHint, Theme } from "../_types";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+/** Same-origin proxy in the browser — works even if NEXT_PUBLIC_API_URL was missing at build time. */
+const BASE =
+  typeof window !== "undefined"
+    ? "/api/backend"
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
 
 type ApiScanStatus = "queued" | "running" | "done" | "failed";
 
