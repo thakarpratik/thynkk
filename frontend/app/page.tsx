@@ -7,12 +7,12 @@ import { LiveActivity } from "./_components/LiveActivity";
 import { HeroScanInput } from "./_components/HeroScanInput";
 
 export const metadata: Metadata = {
-  title: "Thynkk — Reddit Growth Engine for Indie Founders",
-  description: "Paste your website. Thynkk finds community discussions you should join, drafts helpful replies, and suggests posts — without sounding spammy.",
+  title: "Thynkk — Targeted Organic Traffic for Indie Founders",
+  description: "Thynkk helps you get targeted traffic the organic, legit way — by joining real community discussions, not spamming links. Paste your site for reply drafts and post ideas.",
   alternates: { canonical: "https://thynkk.co" },
   openGraph: {
-    title: "Thynkk — Reddit Growth Engine for Indie Founders",
-    description: "Paste your website. Find conversations worth joining. Get reply drafts and post ideas.",
+    title: "Thynkk — Targeted Organic Traffic for Indie Founders",
+    description: "Get targeted traffic organically. Find conversations worth joining. Copy reply drafts and post ideas — no spam, no ads.",
     url: "https://thynkk.co",
   },
 };
@@ -25,13 +25,16 @@ export default function LandingPage() {
       <section className="pt-40 pb-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <LiveActivity />
-          <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">The growth engine for sites nobody&apos;s heard of yet</p>
+          <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">Targeted traffic · Organic · Legit</p>
           <h1 className="font-mono text-5xl md:text-6xl font-bold mb-6 leading-tight">
             Stop launching into<br />
             <span className="text-gradient">silence.</span>
           </h1>
-          <p className="text-xl text-[#94A3B8] max-w-2xl mx-auto mb-10 leading-relaxed">
-            Paste your website. Thynkk finds the discussions your customers are already having — and drafts replies you won&apos;t cringe at.
+          <p className="text-xl text-[#94A3B8] max-w-2xl mx-auto mb-4 leading-relaxed">
+            Thynkk is your tool to get <span className="text-[#F8FAFC]">targeted traffic</span> — the organic, legit way. No paid ads. No spam blasts.
+          </p>
+          <p className="text-base text-[#64748B] max-w-xl mx-auto mb-10 leading-relaxed">
+            Paste your website and we&apos;ll find the discussions your ideal customers are already having — with reply drafts and post ideas you can use today.
           </p>
           <div className="mb-4">
             <HeroScanInput />
@@ -43,12 +46,15 @@ export default function LandingPage() {
       <section className="py-20 px-6 border-t border-[#1E293B]">
         <div className="max-w-6xl mx-auto">
           <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">How it works</p>
-          <h2 className="font-mono text-3xl font-bold text-center mb-12">From zero traffic to first conversations</h2>
+          <h2 className="font-mono text-3xl font-bold text-center mb-4">How you get targeted traffic — without ads</h2>
+          <p className="text-center text-[#94A3B8] text-sm max-w-xl mx-auto mb-12 leading-relaxed">
+            Show up where your audience already talks. Add value first. Let the right people discover you naturally.
+          </p>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { step: "01", title: "Paste your URL", desc: "We read your product, niche, and who it's for.", color: "#6366F1" },
-              { step: "02", title: "Find live threads", desc: "We scan communities for discussions you can add value to.", color: "#818CF8" },
-              { step: "03", title: "Get copy-ready drafts", desc: "Reply suggestions and post ideas — helpful first, spammy never.", color: "#22C55E" },
+              { step: "01", title: "Paste your URL", desc: "We learn your product, niche, and who you need to reach.", color: "#6366F1" },
+              { step: "02", title: "Find live threads", desc: "We surface community discussions where your product genuinely fits.", color: "#818CF8" },
+              { step: "03", title: "Get copy-ready drafts", desc: "Helpful replies and post ideas — organic reach, not link-dropping.", color: "#22C55E" },
             ].map((item) => (
               <div key={item.step} className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-8">
                 <p className="text-xs font-mono mb-3" style={{ color: item.color }}>{item.step}</p>
@@ -62,7 +68,7 @@ export default function LandingPage() {
 
       <section className="py-20 px-6 border-t border-[#1E293B]">
         <div className="max-w-3xl mx-auto">
-          <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">What you get</p>
+          <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">What targeted traffic looks like</p>
           <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-6 font-mono text-sm space-y-4">
             {[
               { label: "Thread", text: "What tool do you use for launch videos?", meta: "recommendation · low promo risk" },
@@ -82,9 +88,9 @@ export default function LandingPage() {
       <section className="py-16 px-6 border-t border-[#1E293B]">
         <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
+            { value: "100%", label: "Organic traffic" },
+            { value: "10+", label: "Threads to join" },
             { value: "60s", label: "Avg scan time" },
-            { value: "10+", label: "Threads ranked" },
-            { value: "$0.10", label: "Cost per scan" },
             { value: "0", label: "Spam posts sent" },
           ].map((s) => (
             <div key={s.label} className="text-center">
@@ -142,9 +148,11 @@ export default function LandingPage() {
       <section className="py-24 px-6 border-t border-[#1E293B]">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="font-mono text-4xl font-bold mb-4">
-            Your customers are already talking.<br /><span className="text-gradient">Join the conversation.</span>
+            Your next customers are already talking.<br /><span className="text-gradient">Reach them the right way.</span>
           </h2>
-          <p className="text-[#94A3B8] mb-8">Paste your site. Get threads, replies, and post ideas in about a minute.</p>
+          <p className="text-[#94A3B8] mb-8 max-w-lg mx-auto leading-relaxed">
+            Start getting targeted, organic traffic today. Paste your site — threads, reply drafts, and post ideas in about a minute.
+          </p>
           <div className="max-w-xl mx-auto">
             <HeroScanInput />
           </div>

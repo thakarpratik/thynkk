@@ -10,7 +10,7 @@ export function SiteFooter() {
               thynkk<span className="text-[#6366F1]">.</span>
             </span>
             <p className="text-xs text-[#475569] mt-2 leading-relaxed">
-              The growth engine for indie founders. Find conversations. Draft replies.
+              Targeted organic traffic for indie founders. Find conversations. Draft replies. No spam.
             </p>
           </div>
           <div>
