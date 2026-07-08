@@ -63,7 +63,12 @@ def _run(
         log_scan(ip, url, from_cache=False, status="done", themes_count=len(payload.get("threads", [])), engine=engine)
 
     except Exception as exc:
-        store.update(scan_id, status=ScanStatus.failed, error=str(exc))
+        msg = str(exc).strip() or exc.__class__.__name__
+        if "SERPER_API_KEY" in msg:
+            msg = "SERPER_API_KEY is not configured on the server."
+        elif "ANTHROPIC_API_KEY" in msg:
+            msg = "ANTHROPIC_API_KEY is not configured on the server."
+        store.update(scan_id, status=ScanStatus.failed, error=msg)
         log_scan(ip, url, from_cache=False, status="failed", themes_count=0, engine=engine)
 
 

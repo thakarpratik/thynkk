@@ -286,16 +286,36 @@ function toPostIdea(p: ApiPostIdea): PostIdea {
   };
 }
 
-async function parseApiError(res: Response, fallback: string): Promise<never> {
-  const detail = await res.json().catch(() => ({}));
-  const raw = detail?.detail;
-  if (typeof raw === "object" && raw?.error) throw new Error(raw.error);
-  if (typeof raw === "string") {
-    if (raw.toLowerCase().includes("authorization token")) throw new Error("auth_invalid");
-    if (raw.toLowerCase().includes("email")) throw new Error("email_not_verified");
-    throw new Error(raw);
+function formatApiDetail(detail: unknown): string {
+  if (!detail) return "";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "object" && item && "msg" in item) return String((item as { msg: string }).msg);
+        return String(item);
+      })
+      .join("; ");
   }
-  throw new Error(fallback);
+  if (typeof detail === "object" && detail) {
+    const obj = detail as { error?: string; message?: string };
+    if (obj.message) return obj.message;
+    if (obj.error) return obj.error;
+  }
+  return String(detail);
+}
+
+async function parseApiError(res: Response, fallback: string): Promise<never> {
+  const body = await res.json().catch(() => ({}));
+  const text = formatApiDetail(body?.detail) || fallback;
+  const lower = text.toLowerCase();
+  if (lower.includes("authorization token")) throw new Error("auth_invalid");
+  if (lower.includes("email_not_verified") || lower.includes("verify your email")) {
+    throw new Error("email_not_verified");
+  }
+  if (lower.includes("quota_exceeded")) throw new Error("quota_exceeded");
+  if (lower.includes("ip_quota_exceeded")) throw new Error("ip_quota_exceeded");
+  throw new Error(text);
 }
 
 export async function submitGrowthScan(url: string, getToken: TokenGetter): Promise<string> {
@@ -310,10 +330,7 @@ export async function submitGrowthScan(url: string, getToken: TokenGetter): Prom
     },
     body: JSON.stringify({ url }),
   });
-  if (res.status === 401) await parseApiError(res, "auth_invalid");
-  if (res.status === 429) await parseApiError(res, "quota_exceeded");
-  if (res.status === 403) await parseApiError(res, "forbidden");
-  if (!res.ok) throw new Error(`Failed to submit growth scan: ${res.status}`);
+  if (!res.ok) await parseApiError(res, `Request failed (${res.status})`);
   const data = await res.json();
   return data.scan_id as string;
 }
@@ -325,10 +342,13 @@ export async function pollGrowthStatus(scanId: string): Promise<GrowthStatusResp
 }
 
 export async function fetchGrowthReport(scanId: string, getToken: TokenGetter): Promise<GrowthReport & { scanId: string; url: string }> {
+  const token = await getToken();
+  if (!token) throw new Error("auth_invalid");
+
   const res = await fetch(`${BASE}/growth-scans/${scanId}/report`, {
-    headers: await authHeaders(getToken),
+    headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`Failed to fetch growth report: ${res.status}`);
+  if (!res.ok) await parseApiError(res, `Failed to load report (${res.status})`);
   const data: GrowthReportResponse = await res.json();
   return {
     scanId: data.scan_id,

@@ -24,6 +24,17 @@ import { UpgradeModal } from "./_components/UpgradeModal";
 
 const POLL_INTERVAL_MS = 3000;
 
+function formatScanError(e: unknown): string {
+  if (!(e instanceof Error)) return "Could not start scan. Please try again.";
+  const msg = e.message;
+  if (msg === "quota_exceeded") return "Scan limit reached. Upgrade to Pro for 50 scans/month.";
+  if (msg === "ip_quota_exceeded") return "Free scan limit reached for this network. Upgrade to Pro for more scans.";
+  if (msg === "email_not_verified") return "Please verify your email before scanning.";
+  if (msg === "auth_invalid") return "Session expired. Sign out and sign back in, then try again.";
+  if (msg === "Failed to fetch") return "Could not reach the API. Check your connection or try again in a moment.";
+  return msg || "Could not start scan. Please try again.";
+}
+
 export default function Dashboard() {
   const searchParams = useSearchParams();
   const { getToken, isSignedIn, isLoaded } = useAuth();
@@ -93,8 +104,8 @@ export default function Dashboard() {
         } else {
           poll(scanId);
         }
-      } catch {
-        setErrorMessage("Connection lost. Check your network and try again.");
+      } catch (e: unknown) {
+        setErrorMessage(formatScanError(e));
         setStatus("error");
       }
     }, POLL_INTERVAL_MS);
@@ -125,23 +136,7 @@ export default function Dashboard() {
 
     setStatus("loading");
     submitGrowthScan(targetUrl, getToken).then(poll).catch((e: unknown) => {
-      if (e instanceof Error) {
-        if (e.message === "quota_exceeded") {
-          refreshAccount();
-          setErrorMessage("Scan limit reached. Upgrade to Pro for 50 scans/month.");
-        } else if (e.message === "ip_quota_exceeded") {
-          refreshAccount();
-          setErrorMessage("Free scan limit reached for this network.");
-        } else if (e.message === "email_not_verified") {
-          setErrorMessage("Please verify your email before scanning.");
-        } else if (e.message === "auth_invalid") {
-          setErrorMessage("Session expired. Sign out and sign back in, then try again.");
-        } else {
-          setErrorMessage("Could not start scan. Please try again.");
-        }
-      } else {
-        setErrorMessage("Could not start scan. Please try again.");
-      }
+      setErrorMessage(formatScanError(e));
       setStatus("error");
     });
   };

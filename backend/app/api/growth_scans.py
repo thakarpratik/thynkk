@@ -1,5 +1,6 @@
 """Growth scan API — paste a website URL, get threads + reply drafts."""
 
+import os
 import re
 import uuid
 
@@ -103,6 +104,19 @@ def get_engine() -> Engine:
     return db_engine
 
 
+def _require_growth_env() -> None:
+    missing = []
+    if not os.environ.get("SERPER_API_KEY", "").strip():
+        missing.append("SERPER_API_KEY")
+    if not os.environ.get("ANTHROPIC_API_KEY", "").strip():
+        missing.append("ANTHROPIC_API_KEY")
+    if missing:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Server misconfigured: missing {', '.join(missing)}. Add them in Railway env vars.",
+        )
+
+
 @router.post("", response_model=GrowthScanCreated, status_code=202)
 def submit_growth_scan(
     request: Request,
@@ -112,6 +126,7 @@ def submit_growth_scan(
     engine: Engine = Depends(get_engine),
 ) -> GrowthScanCreated:
     check_email_verified(clerk_payload)
+    _require_growth_env()
     clerk_id = clerk_payload["sub"]
 
     ip = get_client_ip(request)
