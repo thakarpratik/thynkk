@@ -10,8 +10,9 @@ import {
   fetchGrowthReport,
   fetchQuota,
   fetchBillingStatus,
-  activatePayPalSubscription,
+  capturePayPalOrder,
 } from "./_lib/api";
+import { PACK_SCANS } from "../_lib/pricing";
 import { DashboardNav } from "./_components/DashboardNav";
 import { DashboardStepper } from "./_components/DashboardStepper";
 import { GrowthScanInput } from "./_components/GrowthScanInput";
@@ -25,15 +26,14 @@ import { ThreadCard } from "./_components/ThreadCard";
 import { PostIdeaCard } from "./_components/PostIdeaCard";
 import { UpgradeStrip } from "./_components/UpgradeStrip";
 import { UpgradeModal } from "./_components/UpgradeModal";
-import { PRO_SCANS_PER_MONTH } from "../_lib/pricing";
 
 const POLL_INTERVAL_MS = 3000;
 
 function formatScanError(e: unknown): string {
   if (!(e instanceof Error)) return "Could not start scan. Please try again.";
   const msg = e.message;
-  if (msg === "quota_exceeded") return `Scan limit reached. Upgrade to Pro for ${PRO_SCANS_PER_MONTH} scans/month.`;
-  if (msg === "ip_quota_exceeded") return "Free scan limit reached for this network. Upgrade to Pro for more scans.";
+  if (msg === "quota_exceeded") return `No scans left. Buy a Launch Pack for ${PACK_SCANS} full scans.`;
+  if (msg === "ip_quota_exceeded") return "Free scan limit reached for this network. Buy a Launch Pack for more scans.";
   if (msg === "email_not_verified") return "Please verify your email before scanning.";
   if (msg === "auth_invalid") return "Session expired. Sign out and sign back in, then try again.";
   if (msg === "Failed to fetch") return "Could not reach the API. Check your connection or try again in a moment.";
@@ -43,7 +43,7 @@ function formatScanError(e: unknown): string {
 export default function Dashboard() {
   const searchParams = useSearchParams();
   const { getToken, isSignedIn, isLoaded } = useAuth();
-  const [isPro, setIsPro] = useState(false);
+  const [scanCredits, setScanCredits] = useState(0);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeError, setUpgradeError] = useState("");
 
@@ -58,6 +58,8 @@ export default function Dashboard() {
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoScanStarted = useRef(false);
 
+  const reportIsFull = report?.reportTier === "full";
+
   const openUpgrade = useCallback(() => {
     setUpgradeError("");
     setUpgradeOpen(true);
@@ -69,7 +71,7 @@ export default function Dashboard() {
         fetchBillingStatus(getToken),
         fetchQuota(getToken),
       ]);
-      setIsPro(billing.is_paid);
+      setScanCredits(billing.scan_credits);
       setQuota(q);
     } catch {
       fetchQuota(getToken).then(setQuota).catch(() => null);
@@ -106,6 +108,7 @@ export default function Dashboard() {
         } else if (s.status === "failed") {
           setErrorMessage(s.error ?? "Scan failed. Try a different URL.");
           setStatus("error");
+          refreshAccount();
         } else {
           poll(scanId);
         }
@@ -168,24 +171,24 @@ export default function Dashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when landing with ?url=
   }, [isLoaded, isSignedIn, searchParams, status]);
 
-  const handlePayPalSuccess = async (subscriptionId: string) => {
+  const handlePayPalSuccess = async (orderId: string) => {
     try {
-      await activatePayPalSubscription(subscriptionId, getToken);
+      const result = await capturePayPalOrder(orderId, getToken);
+      setScanCredits(result.scan_credits);
       await refreshAccount();
-      setIsPro(true);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Could not activate subscription.";
+      const msg = e instanceof Error ? e.message : "Could not complete payment.";
       setUpgradeError(msg);
       throw e;
     }
   };
 
-  const hiddenThreads = !isPro && report ? Math.max(0, report.totalThreads - report.threads.length) : 0;
-  const hiddenPosts = !isPro && report ? Math.max(0, report.totalPostIdeas - report.postIdeas.length) : 0;
+  const hiddenThreads = !reportIsFull && report ? Math.max(0, report.totalThreads - report.threads.length) : 0;
+  const hiddenPosts = !reportIsFull && report ? Math.max(0, report.totalPostIdeas - report.postIdeas.length) : 0;
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      <DashboardNav isPro={isPro} quota={quota} onUpgrade={openUpgrade} />
+      <DashboardNav scanCredits={scanCredits} quota={quota} onUpgrade={openUpgrade} />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-20">
         <header className="mb-8">
@@ -226,7 +229,7 @@ export default function Dashboard() {
               report={report}
               scannedUrl={scannedUrl}
               scanTime={scanTime}
-              isPro={isPro}
+              isPro={reportIsFull}
               onNewScan={handleNewScan}
             />
 
@@ -245,10 +248,10 @@ export default function Dashboard() {
               />
               <div className="space-y-4">
                 {report.threads.map((thread, i) => (
-                  <ThreadCard key={thread.url} thread={thread} index={i} isPro={isPro} onUpgrade={openUpgrade} />
+                  <ThreadCard key={thread.url} thread={thread} index={i} isPro={reportIsFull} onUpgrade={openUpgrade} />
                 ))}
               </div>
-              {!isPro && hiddenThreads > 0 && (
+              {!reportIsFull && hiddenThreads > 0 && (
                 <UpgradeStrip variant="growth" hiddenCount={hiddenThreads} onUpgrade={openUpgrade} />
               )}
             </section>
@@ -262,10 +265,10 @@ export default function Dashboard() {
               />
               <div className="space-y-4">
                 {report.postIdeas.map((idea, i) => (
-                  <PostIdeaCard key={idea.title} idea={idea} index={i} isPro={isPro} onUpgrade={openUpgrade} />
+                  <PostIdeaCard key={idea.title} idea={idea} index={i} isPro={reportIsFull} onUpgrade={openUpgrade} />
                 ))}
               </div>
-              {!isPro && hiddenPosts > 0 && (
+              {!reportIsFull && hiddenPosts > 0 && (
                 <UpgradeStrip variant="growth-posts" hiddenCount={hiddenPosts} onUpgrade={openUpgrade} />
               )}
             </section>

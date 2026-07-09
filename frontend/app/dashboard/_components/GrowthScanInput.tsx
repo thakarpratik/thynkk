@@ -1,6 +1,6 @@
 import type { ScanStatus } from "../_types";
 import type { QuotaStatus } from "../_lib/api";
-import { PRO_SCANS_PER_MONTH } from "../../_lib/pricing";
+import { PACK_NAME, PACK_SCANS } from "../../_lib/pricing";
 
 interface GrowthScanInputProps {
   url: string;
@@ -39,10 +39,12 @@ export function GrowthScanInput({ url, status, quota, onChange, onScan, onUpgrad
           {quota && (
             <p className={`text-xs mt-2 ${exhausted ? "text-destructive" : "text-muted-foreground"}`}>
               {exhausted
-                ? quota.is_paid
-                  ? "You've used all scans this month."
-                  : "You've used your free scan."
-                : `${quota.remaining} scan${quota.remaining === 1 ? "" : "s"} left${quota.is_paid ? " this month" : ""}`}
+                ? "No scans left."
+                : quota.scan_credits > 0
+                  ? `${quota.scan_credits} full scan${quota.scan_credits === 1 ? "" : "s"} left`
+                  : quota.free_available
+                    ? "1 free scan available"
+                    : `${quota.remaining} scan${quota.remaining === 1 ? "" : "s"} left`}
             </p>
           )}
         </div>
@@ -54,13 +56,13 @@ export function GrowthScanInput({ url, status, quota, onChange, onScan, onUpgrad
           {isLoading ? "Scanning…" : "Start scan"}
         </button>
       </div>
-      {exhausted && !quota?.is_paid && (
+      {exhausted && (
         <p className="mt-4 text-sm text-muted-foreground rounded-lg bg-muted/50 px-4 py-3">
-          Free plan includes 1 scan.{" "}
+          You&apos;ve used all scans.{" "}
           <button type="button" onClick={onUpgrade} className="text-primary font-medium cursor-pointer hover:underline">
-            Upgrade to Pro
+            Buy {PACK_NAME}
           </button>{" "}
-          for {PRO_SCANS_PER_MONTH} scans/month and full reply drafts.
+          for {PACK_SCANS} full scans — no subscription.
         </p>
       )}
     </section>

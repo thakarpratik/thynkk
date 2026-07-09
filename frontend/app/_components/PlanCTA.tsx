@@ -29,7 +29,7 @@ export function PlanCTA({ plan }: PlanCTAProps) {
     let cancelled = false;
     fetchBillingStatus(getToken)
       .then((billing) => {
-        if (!cancelled) setIsPro(billing.is_paid);
+        if (!cancelled) setIsPro(billing.scan_credits > 0);
       })
       .catch(() => {
         if (!cancelled) setIsPro(false);
@@ -108,7 +108,7 @@ export function PlanCTA({ plan }: PlanCTAProps) {
         href="/dashboard"
         className={`${base} bg-[#22C55E]/15 border border-[#22C55E]/40 text-[#22C55E]`}
       >
-        Pro active — Go to Dashboard
+        Launch Pack active — Go to Dashboard
       </Link>
     );
   }
@@ -118,7 +118,7 @@ export function PlanCTA({ plan }: PlanCTAProps) {
       href="/dashboard?upgrade=true"
       className={`${base} bg-[#6366F1] hover:bg-[#4F46E5] text-white transition-colors`}
     >
-      Upgrade to Pro — $19/mo
+      Buy Launch Pack — $19
     </Link>
   );
 }

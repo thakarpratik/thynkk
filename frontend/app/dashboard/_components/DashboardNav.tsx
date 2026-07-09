@@ -3,20 +3,22 @@ import { UserButton } from "@clerk/nextjs";
 import type { QuotaStatus } from "../_lib/api";
 
 interface DashboardNavProps {
-  isPro: boolean;
+  scanCredits: number;
   quota: QuotaStatus | null;
   onUpgrade: () => void;
 }
 
-export function DashboardNav({ isPro, quota, onUpgrade }: DashboardNavProps) {
+export function DashboardNav({ scanCredits, quota, onUpgrade }: DashboardNavProps) {
   const quotaLabel = (() => {
     if (!quota) return null;
-    if (quota.is_paid) {
-      return `${quota.remaining} scan${quota.remaining === 1 ? "" : "s"} left`;
+    if (scanCredits > 0) {
+      return `${scanCredits} full scan${scanCredits === 1 ? "" : "s"} left`;
     }
-    if (quota.remaining === 0) return "Free scan used";
-    return `${quota.remaining} free scan`;
+    if (quota.free_available) return "1 free scan";
+    return "No scans left";
   })();
+
+  const needsUpgrade = scanCredits === 0 && quota?.free_available === false;
 
   return (
     <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/95 backdrop-blur-sm">
@@ -29,7 +31,7 @@ export function DashboardNav({ isPro, quota, onUpgrade }: DashboardNavProps) {
           {quotaLabel && (
             <span
               className={`hidden sm:inline text-xs font-mono px-2.5 py-1 rounded-full border truncate ${
-                quota?.remaining === 0 && !isPro
+                needsUpgrade
                   ? "bg-destructive/10 text-destructive border-destructive/30"
                   : "bg-muted text-muted-foreground border-border"
               }`}
@@ -38,9 +40,9 @@ export function DashboardNav({ isPro, quota, onUpgrade }: DashboardNavProps) {
             </span>
           )}
 
-          {isPro ? (
+          {scanCredits > 0 ? (
             <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-accent/15 text-accent border border-accent/30 shrink-0">
-              Pro
+              Launch Pack
             </span>
           ) : (
             <button
@@ -48,7 +50,7 @@ export function DashboardNav({ isPro, quota, onUpgrade }: DashboardNavProps) {
               onClick={onUpgrade}
               className="text-xs sm:text-sm bg-primary hover:bg-primary/90 text-primary-foreground px-3 sm:px-4 py-1.5 rounded-lg font-medium transition-colors cursor-pointer shrink-0"
             >
-              Upgrade
+              Buy scans
             </button>
           )}
 

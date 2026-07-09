@@ -9,6 +9,7 @@ from sqlalchemy.engine import Engine
 from app.api.admin import log_scan
 from app.api.growth_store import GrowthScanStore
 from app.api.models import ScanStatus
+from app.api.quota import finalize_scan_billing
 from app.growth.analyze import analyze_growth, infer_product_context
 from app.growth.cache import get_cached, set_cached
 from app.growth.crawl import crawl_site
@@ -27,9 +28,12 @@ def _run(
     ip: str = "unknown",
 ) -> None:
     store.update(scan_id, status=ScanStatus.running)
+    from_cache = False
+    success = False
     try:
         cached = get_cached(engine, url)
         if cached:
+            from_cache = True
             store.update(
                 scan_id,
                 status=ScanStatus.done,
@@ -37,6 +41,7 @@ def _run(
                 from_cache=True,
             )
             log_scan(ip, url, from_cache=True, status="done", themes_count=len(cached.get("threads", [])), engine=engine)
+            success = True
             return
 
         site = crawl_site(url)
@@ -61,6 +66,7 @@ def _run(
         set_cached(engine, url, payload)
         store.update(scan_id, status=ScanStatus.done, result=payload, from_cache=False)
         log_scan(ip, url, from_cache=False, status="done", themes_count=len(payload.get("threads", [])), engine=engine)
+        success = True
 
     except Exception as exc:
         msg = str(exc).strip() or exc.__class__.__name__
@@ -70,6 +76,14 @@ def _run(
             msg = "ANTHROPIC_API_KEY is not configured on the server."
         store.update(scan_id, status=ScanStatus.failed, error=msg)
         log_scan(ip, url, from_cache=False, status="failed", themes_count=0, engine=engine)
+    finally:
+        finalize_scan_billing(
+            engine,
+            scan_id,
+            success=success,
+            from_cache=from_cache,
+            ip=ip,
+        )
 
 
 def start_growth_scan(

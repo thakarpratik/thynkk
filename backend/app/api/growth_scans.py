@@ -16,12 +16,12 @@ from app.api.growth_store import GrowthScanStore, growth_scan_store
 from app.api.models import ScanStatus
 from app.api.quota import (
     account_key_for,
-    check_quota,
     get_client_ip,
-    increment_ip_free_count,
-    increment_quota,
+    get_scan_tier,
+    record_scan_start,
+    reserve_scan,
 )
-from app.api.users import user_is_paid
+from app.api.users import get_user_email
 
 router = APIRouter(prefix="/growth-scans", tags=["growth-scans"])
 
@@ -93,6 +93,7 @@ class GrowthScanReport(BaseModel):
     total_threads: int
     total_post_ideas: int
     from_cache: bool
+    report_tier: str
 
 
 def get_store() -> GrowthScanStore:
@@ -128,18 +129,16 @@ def submit_growth_scan(
     check_email_verified(clerk_payload)
     _require_growth_env()
     clerk_id = clerk_payload["sub"]
+    email = get_user_email(engine, clerk_id)
 
     ip = get_client_ip(request)
     key = account_key_for(request, clerk_id)
-    quota = check_quota(key, engine, clerk_id, request=request)
+    reservation = reserve_scan(request, key, clerk_id, email, body.url, engine)
 
     scan_id = str(uuid.uuid4())
+    record_scan_start(engine, scan_id, reservation, body.url)
     store.create(scan_id, body.url)
     start_growth_scan(scan_id, body.url, store, engine, ip=ip)
-
-    increment_quota(key, engine)
-    if not quota["is_paid"]:
-        increment_ip_free_count(engine, ip)
 
     return GrowthScanCreated(scan_id=scan_id)
 
@@ -168,7 +167,12 @@ def growth_report(
     store: GrowthScanStore = Depends(get_store),
     engine: Engine = Depends(get_engine),
 ) -> GrowthScanReport:
-    is_paid = user_is_paid(engine, clerk_payload["sub"])
+    clerk_id = clerk_payload["sub"]
+    key = account_key_for(request, clerk_id)
+    tier = get_scan_tier(engine, scan_id, key)
+    if tier is None:
+        raise HTTPException(status_code=404, detail="Scan not found.")
+
     job = store.get(scan_id)
     if not job:
         raise HTTPException(status_code=404, detail="Scan not found.")
@@ -179,7 +183,8 @@ def growth_report(
     if not job.result:
         raise HTTPException(status_code=422, detail="No report available.")
 
-    gated = gate_growth_report(job.result, is_paid)
+    is_full = tier == "full"
+    gated = gate_growth_report(job.result, is_full)
     return GrowthScanReport(
         scan_id=job.scan_id,
         url=job.url,
@@ -193,4 +198,5 @@ def growth_report(
         total_threads=gated["total_threads"],
         total_post_ideas=gated["total_post_ideas"],
         from_cache=job.from_cache,
+        report_tier=tier,
     )

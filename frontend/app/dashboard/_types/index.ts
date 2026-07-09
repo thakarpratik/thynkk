@@ -76,4 +76,5 @@ export interface GrowthReport {
   totalThreads: number;
   totalPostIdeas: number;
   fromCache: boolean;
+  reportTier: "free" | "full";
 }

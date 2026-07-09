@@ -7,48 +7,50 @@ import { LiveActivity } from "../_components/LiveActivity";
 import {
   FREE_FEATURE_LIST,
   FREE_SCANS_LIFETIME,
-  PRO_FEATURE_LIST,
-  PRO_PRICE_LABEL,
-  PRO_PRICE_USD,
-  PRO_SCANS_PER_MONTH,
+  PACK_FEATURE_LIST,
+  PACK_NAME,
+  PACK_PER_SCAN,
+  PACK_PRICE_LABEL,
+  PACK_PRICE_USD,
+  PACK_SCANS,
 } from "../_lib/pricing";
 
 export const metadata: Metadata = {
   title: "Pricing — Thynkk Growth Engine",
-  description: `Free: ${FREE_SCANS_LIFETIME} site scan. Pro ${PRO_PRICE_LABEL}: ${PRO_SCANS_PER_MONTH} scans, full reply drafts, all post ideas.`,
+  description: `Free: ${FREE_SCANS_LIFETIME} site scan. ${PACK_NAME} ${PACK_PRICE_LABEL}: ${PACK_SCANS} full scans, reply drafts, post ideas.`,
   alternates: { canonical: "https://thynkk.co/pricing" },
   openGraph: {
     title: "Thynkk Pricing — Reddit traffic without the grind",
-    description: `Start with 1 free growth scan. Pro unlocks full reports and ${PRO_SCANS_PER_MONTH} scans per month.`,
+    description: `Start with 1 free growth scan. ${PACK_NAME} unlocks ${PACK_SCANS} full reports — pay once, no subscription.`,
     url: "https://thynkk.co/pricing",
   },
 };
 
 const COMPARISON = [
-  { feature: "Site scans", free: "1 total", pro: `${PRO_SCANS_PER_MONTH} / month` },
+  { feature: "Site scans", free: "1 total", pro: `${PACK_SCANS} per pack` },
   { feature: "Threads per scan", free: "Top 3", pro: "All ranked" },
   { feature: "Reply drafts", free: "Preview only", pro: "Full text + copy" },
   { feature: "Post ideas", free: "1 teaser", pro: "All ideas" },
   { feature: "Promo-risk scores", free: "—", pro: "✓" },
-  { feature: "Typical use", free: "Try once", pro: "~2 scans / week" },
+  { feature: "Billing", free: "Free forever", pro: "One-time $19" },
 ];
 
 const FAQ = [
   {
-    q: "Why only 10 scans per month on Pro?",
-    a: "Most founders scan when they launch, pivot, or refresh positioning — about 2–4 times a month. Ten scans keeps quality high, costs sustainable, and is more than enough unless you're running an agency.",
+    q: "Why pay-as-you-go instead of a subscription?",
+    a: "Most founders scan when they launch, pivot, or refresh positioning — a few times a year, not every week. PAYG matches how you actually use Thynkk.",
   },
   {
     q: "What counts as a scan?",
-    a: "One scan = one website URL. Thynkk finds relevant Reddit discussions, ranks them, and drafts replies and post ideas. Most scans finish in about 60 seconds.",
+    a: "One scan = one website URL. Thynkk finds relevant Reddit discussions, ranks them, and drafts replies and post ideas. Cached URLs and re-reading old reports don't burn credits.",
   },
   {
-    q: "What do I get on Pro that Free doesn't?",
-    a: "Free shows top opportunities with locked reply drafts. Pro unlocks every thread, full copy-paste replies, all post ideas, and enough monthly scans to grow on Reddit consistently.",
+    q: "What do I get in the Launch Pack?",
+    a: "3 full growth reports — every thread, copy-paste replies, all post ideas. Failed scans don't count. Buy another pack anytime you need more.",
   },
   {
-    q: "Can I cancel anytime?",
-    a: "Yes. Pro is billed monthly through PayPal. Cancel anytime — no annual contract.",
+    q: "Can I buy more packs later?",
+    a: "Yes. Each $19 pack adds 3 more full scans. No subscription, no auto-renewal.",
   },
 ];
 
@@ -67,12 +69,12 @@ export default function PricingPage() {
 
       <main className="max-w-4xl mx-auto px-6 pt-36 pb-24">
         <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">Pricing</p>
-        <h1 className="font-mono text-4xl font-bold text-center mb-4">Built for founders, not agencies</h1>
+        <h1 className="font-mono text-4xl font-bold text-center mb-4">Pay when you launch. Not every month.</h1>
         <p className="text-center text-[#94A3B8] mb-2 max-w-2xl mx-auto leading-relaxed">
-          One free scan to see the magic. Pro gives you enough monthly scans to grow on Reddit without burning API budget on scan spam.
+          One free scan to see the magic. Then buy a Launch Pack when you&apos;re ready for full reports — no subscription.
         </p>
         <p className="text-center text-sm text-[#64748B] mb-6 max-w-lg mx-auto">
-          Most Pro users run 3–6 scans/month · Full reports every time
+          {PACK_PER_SCAN} · Failed scans don&apos;t count · Re-read old reports free
         </p>
         <div className="flex justify-center mb-12">
           <LiveActivity variant="compact" />
@@ -100,16 +102,16 @@ export default function PricingPage() {
             style={{ boxShadow: "0 0 24px rgba(99,102,241,0.2)" }}
           >
             <div className="absolute -top-3 left-6 bg-[#6366F1] text-white text-xs font-mono px-3 py-1 rounded-full">
-              FOR WEEKLY GROWTH
+              MOST POPULAR
             </div>
-            <h2 className="font-mono font-bold text-xl mb-1">Pro</h2>
+            <h2 className="font-mono font-bold text-xl mb-1">{PACK_NAME}</h2>
             <p className="text-[#94A3B8] text-sm mb-6">Full reports, every reply unlocked.</p>
             <div className="font-mono text-4xl font-bold mb-2">
-              ${PRO_PRICE_USD}<span className="text-lg text-[#94A3B8] font-normal">/mo</span>
+              ${PACK_PRICE_USD}<span className="text-lg text-[#94A3B8] font-normal"> once</span>
             </div>
-            <p className="text-xs text-[#64748B] mb-8">{PRO_SCANS_PER_MONTH} scans/mo · ~${(PRO_PRICE_USD / PRO_SCANS_PER_MONTH).toFixed(2)} per scan</p>
+            <p className="text-xs text-[#64748B] mb-8">{PACK_SCANS} full scans · {PACK_PER_SCAN}</p>
             <ul className="space-y-3 text-sm text-[#94A3B8] mb-8">
-              {PRO_FEATURE_LIST.map((f) => (
+              {PACK_FEATURE_LIST.map((f) => (
                 <li key={f} className="flex items-start gap-2">
                   <CheckIcon />
                   <span>{f}</span>
@@ -128,7 +130,7 @@ export default function PricingPage() {
                 <tr className="bg-[#0E1223] border-b border-[#1E293B]">
                   <th className="text-left px-5 py-3 font-mono text-[#64748B] font-normal">Feature</th>
                   <th className="text-center px-5 py-3 font-mono text-[#94A3B8]">Free</th>
-                  <th className="text-center px-5 py-3 font-mono text-[#6366F1]">Pro</th>
+                  <th className="text-center px-5 py-3 font-mono text-[#6366F1]">{PACK_NAME}</th>
                 </tr>
               </thead>
               <tbody>
@@ -160,9 +162,9 @@ export default function PricingPage() {
           className="rounded-xl border border-[#6366F1]/30 bg-[#0E1223] p-8 text-center"
           style={{ boxShadow: "0 0 24px rgba(99,102,241,0.08)" }}
         >
-          <p className="font-mono font-bold text-lg mb-2">Need more than {PRO_SCANS_PER_MONTH} scans?</p>
+          <p className="font-mono font-bold text-lg mb-2">Need more than {PACK_SCANS} scans?</p>
           <p className="text-sm text-[#94A3B8] mb-6 max-w-md mx-auto leading-relaxed">
-            We&apos;re focused on indie founders for now. Agencies — reach out and we&apos;ll talk custom plans.
+            Buy another pack anytime. Agencies — reach out for volume pricing.
           </p>
           <Link
             href="/contact"
@@ -179,7 +181,7 @@ export default function PricingPage() {
         </div>
 
         <p className="text-center text-sm text-[#475569] mt-10">
-          Cancel anytime via PayPal. No annual lock-in.
+          One-time payment via PayPal. No auto-renewal.
         </p>
       </main>
 

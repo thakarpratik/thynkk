@@ -20,7 +20,7 @@ def ensure_cache_table(engine: Engine) -> None:
         """))
 
 
-def _normalize(url: str) -> str:
+def normalize_url(url: str) -> str:
     return url.strip().lower().rstrip("/").replace("https://www.", "https://")
 
 
@@ -30,7 +30,7 @@ def get_cached(engine: Engine, url: str, ttl_hours: int = CACHE_TTL_HOURS) -> di
     with engine.connect() as conn:
         row = conn.execute(
             text("SELECT report_json, cached_at FROM growth_scan_cache WHERE url_key = :k"),
-            {"k": _normalize(url)},
+            {"k": normalize_url(url)},
         ).fetchone()
     if not row or row.cached_at < cutoff:
         return None
@@ -48,7 +48,7 @@ def set_cached(engine: Engine, url: str, report: dict) -> None:
                 SET report_json = :data, cached_at = :now
             """),
             {
-                "k": _normalize(url),
+                "k": normalize_url(url),
                 "data": json.dumps(report),
                 "now": datetime.now(timezone.utc),
             },

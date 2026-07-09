@@ -1,6 +1,6 @@
 import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
-import { PRO_PRICE_USD, PRO_SCANS_PER_MONTH } from "../_lib/pricing";
+import { PACK_NAME, PACK_PRICE_USD, PACK_SCANS } from "../_lib/pricing";
 
 export const metadata = {
   title: "Terms & Conditions",
@@ -33,12 +33,12 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono font-bold text-lg text-[#F8FAFC] mb-3">3. Free and Paid Tiers</h2>
-            <p>The free tier grants one (1) lifetime scan with limited results. The Pro tier (${PRO_PRICE_USD}/month) provides {PRO_SCANS_PER_MONTH} scans per calendar month and full report access. Scan counts reset on the first day of each calendar month for paid subscribers. Unused scans do not roll over.</p>
+            <p>The free tier grants one (1) lifetime scan with limited results. The {PACK_NAME} (${PACK_PRICE_USD} one-time via PayPal) provides {PACK_SCANS} full scan credits. Credits are consumed only on successful fresh scans; cached results and re-reading prior reports do not consume credits. Failed scans do not consume credits. Unused credits do not expire.</p>
           </section>
 
           <section>
             <h2 className="font-mono font-bold text-lg text-[#F8FAFC] mb-3">4. Payment and Billing</h2>
-            <p>Pro subscriptions are billed monthly via Stripe. You may cancel at any time. Cancellation takes effect at the end of the current billing period. We do not offer refunds for partial months. If a payment fails, your account will be downgraded to the free tier after a 7-day grace period.</p>
+            <p>{PACK_NAME} purchases are one-time payments processed via PayPal. There is no auto-renewal. You may purchase additional packs at any time. Refunds are handled on a case-by-case basis — contact hello@thynkk.co within 7 days of purchase if a scan failed due to a platform error.</p>
           </section>
 
           <section>

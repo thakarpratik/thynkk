@@ -55,6 +55,9 @@ export interface Report {
 }
 
 export interface BillingStatus {
+  scan_credits: number;
+  pack_credits: number;
+  pack_price_usd: number;
   is_paid: boolean;
   subscription_id: string | null;
   subscription_status: string | null;
@@ -79,10 +82,14 @@ export interface TrendsResponse {
 }
 
 export interface QuotaStatus {
+  scan_credits: number;
+  free_scan_used: boolean;
+  free_available: boolean;
+  remaining: number;
+  pack_credits: number;
   is_paid: boolean;
   scan_count: number;
   limit: number;
-  remaining: number;
   period_start: string;
 }
 
@@ -191,23 +198,31 @@ export async function fetchBillingStatus(getToken: TokenGetter): Promise<Billing
   return res.json();
 }
 
-export async function activatePayPalSubscription(
-  subscriptionId: string,
+export async function capturePayPalOrder(
+  orderId: string,
   getToken: TokenGetter,
-): Promise<BillingStatus> {
-  const res = await fetch(`${BASE}/billing/paypal/activate`, {
+): Promise<{ scan_credits: number; credits_added: number; order_id: string }> {
+  const res = await fetch(`${BASE}/billing/paypal/capture`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(await authHeaders(getToken)),
     },
-    body: JSON.stringify({ subscription_id: subscriptionId }),
+    body: JSON.stringify({ order_id: orderId }),
   });
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
-    throw new Error(detail.detail ?? `Activation failed: ${res.status}`);
+    throw new Error(detail.detail ?? `Payment failed: ${res.status}`);
   }
   return res.json();
+}
+
+/** @deprecated Use capturePayPalOrder */
+export async function activatePayPalSubscription(
+  orderId: string,
+  getToken: TokenGetter,
+) {
+  return capturePayPalOrder(orderId, getToken);
 }
 
 export async function fetchTrends(refresh = false, getToken?: TokenGetter): Promise<TrendsResponse> {
@@ -262,6 +277,7 @@ interface GrowthReportResponse {
   total_threads: number;
   total_post_ideas: number;
   from_cache: boolean;
+  report_tier: "free" | "full";
 }
 
 function toGrowthThread(t: ApiGrowthThread): GrowthThread {
@@ -367,5 +383,6 @@ export async function fetchGrowthReport(scanId: string, getToken: TokenGetter): 
     totalThreads: data.total_threads,
     totalPostIdeas: data.total_post_ideas,
     fromCache: data.from_cache,
+    reportTier: data.report_tier,
   };
 }

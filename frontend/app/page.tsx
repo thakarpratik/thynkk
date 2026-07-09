@@ -6,7 +6,7 @@ import { PlanCTA } from "./_components/PlanCTA";
 import { LiveActivity } from "./_components/LiveActivity";
 import { HeroCTA } from "./_components/HeroCTA";
 import { WaitlistForm } from "./_components/WaitlistForm";
-import { PRO_FEATURE_LIST, PRO_PRICE_USD } from "./_lib/pricing";
+import { PACK_FEATURE_LIST, PACK_NAME, PACK_PRICE_USD } from "./_lib/pricing";
 
 export const metadata: Metadata = {
   title: "Thynkk — Reddit Traffic Without the Hours of Grinding",
@@ -166,13 +166,13 @@ export default function LandingPage() {
             </div>
             <div className="bg-[#0E1223] border border-[#6366F1] rounded-lg p-8 relative" style={{ boxShadow: "0 0 24px rgba(99,102,241,0.2)" }}>
               <div className="absolute -top-3 left-6 bg-[#6366F1] text-white text-xs font-mono px-3 py-1 rounded-full">MOST POPULAR</div>
-              <h3 className="font-mono font-bold text-xl mb-1">Pro</h3>
+              <h3 className="font-mono font-bold text-xl mb-1">{PACK_NAME}</h3>
               <p className="text-[#94A3B8] text-sm mb-6">Full growth reports.</p>
               <div className="font-mono text-4xl font-bold mb-8">
-                ${PRO_PRICE_USD}<span className="text-lg text-[#94A3B8] font-normal">/mo</span>
+                ${PACK_PRICE_USD}<span className="text-lg text-[#94A3B8] font-normal"> once</span>
               </div>
               <ul className="space-y-3 text-sm text-[#94A3B8] mb-8">
-                {PRO_FEATURE_LIST.map((f) => (
+                {PACK_FEATURE_LIST.map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-[#22C55E] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

@@ -1,4 +1,4 @@
-import { PRO_SCANS_PER_MONTH } from "../../_lib/pricing";
+import { PACK_NAME, PACK_SCANS } from "../../_lib/pricing";
 
 interface UpgradeStripProps {
   variant: "scanner" | "radar" | "growth" | "growth-posts";
@@ -22,13 +22,7 @@ export function UpgradeStrip({ variant, hiddenCount = 0, onUpgrade }: UpgradeStr
           ? "Unlock the full report"
           : "Unlock the full Trend Radar feed";
 
-  const scanLabel = `${PRO_SCANS_PER_MONTH} site scans/month`;
-  const subtitle =
-    variant === "growth" || variant === "growth-posts"
-      ? `Pro: all threads, full reply drafts, all post ideas, ${scanLabel}`
-      : variant === "scanner"
-        ? `Pro: all themes, exact scores, opportunity analysis, CSV export, ${scanLabel}`
-        : `Pro: every trending niche, full momentum data, ${scanLabel}`;
+  const subtitle = `${PACK_NAME}: ${PACK_SCANS} full scans, all threads, full reply drafts, all post ideas`;
 
   return (
     <div className="flex items-center justify-between gap-4 px-5 py-4 bg-[#0E1223] border border-[#6366F1]/30 rounded-lg mt-4">
@@ -41,7 +35,7 @@ export function UpgradeStrip({ variant, hiddenCount = 0, onUpgrade }: UpgradeStr
         onClick={onUpgrade}
         className="shrink-0 bg-[#6366F1] hover:bg-[#4F46E5] text-white px-5 py-2 rounded-md font-medium text-sm font-mono transition-colors cursor-pointer whitespace-nowrap"
       >
-        Upgrade — $19/mo
+        Buy — $19
       </button>
     </div>
   );

@@ -26,14 +26,32 @@ def ensure_users_table(engine: Engine) -> None:
         """))
 
 
-def user_is_paid(engine: Engine, clerk_id: str) -> bool:
+def get_user_email(engine: Engine, clerk_id: str) -> str | None:
     ensure_users_table(engine)
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT is_paid FROM users WHERE clerk_id = :clerk_id AND deleted_at IS NULL"),
+            text("SELECT email FROM users WHERE clerk_id = :clerk_id AND deleted_at IS NULL"),
             {"clerk_id": clerk_id},
         ).fetchone()
-    return bool(row and row[0])
+    return row[0] if row else None
+
+
+def user_scan_credits(engine: Engine, clerk_id: str) -> int:
+    from app.api.quota import get_quota
+
+    quota = get_quota(f"clerk:{clerk_id}", engine)
+    return int(quota["scan_credits"])
+
+
+def user_is_paid(engine: Engine, clerk_id: str) -> bool:
+    """True when user has paid scan credits (legacy name kept for gating helpers)."""
+    return user_scan_credits(engine, clerk_id) > 0
+
+
+def add_user_credits(engine: Engine, clerk_id: str, amount: int) -> int:
+    from app.api.quota import add_credits
+
+    return add_credits(f"clerk:{clerk_id}", amount, engine)
 
 
 def set_user_paid(

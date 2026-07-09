@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PACK_NAME, PACK_PRICE_USD } from "../../_lib/pricing";
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
-const PLAN_ID = process.env.NEXT_PUBLIC_PAYPAL_PLAN_ID ?? "P-57T49130US0841254NI3ATSY";
 
 type PayPalButtons = {
   render: (container: HTMLElement) => void;
@@ -12,11 +12,20 @@ type PayPalButtons = {
 type PayPalSDK = {
   Buttons: (config: {
     style?: Record<string, string>;
-    createSubscription: (
+    createOrder: (
       data: unknown,
-      actions: { subscription: { create: (opts: { plan_id: string }) => Promise<string> } },
+      actions: {
+        order: {
+          create: (opts: {
+            purchase_units: Array<{
+              amount: { value: string; currency_code: string };
+              description: string;
+            }>;
+          }) => Promise<string>;
+        };
+      },
     ) => Promise<string>;
-    onApprove: (data: { subscriptionID?: string }) => void | Promise<void>;
+    onApprove: (data: { orderID?: string }) => void | Promise<void>;
     onError?: (err: unknown) => void;
   }) => PayPalButtons;
 };
@@ -28,7 +37,7 @@ declare global {
 }
 
 interface PayPalSubscribeProps {
-  onSuccess: (subscriptionId: string) => Promise<void>;
+  onSuccess: (orderId: string) => Promise<void>;
   onError?: (message: string) => void;
 }
 
@@ -58,22 +67,29 @@ export function PayPalSubscribe({ onSuccess, onError }: PayPalSubscribeProps) {
             shape: "rect",
             color: "gold",
             layout: "vertical",
-            label: "subscribe",
+            label: "pay",
           },
-          createSubscription(_data, actions) {
-            return actions.subscription.create({ plan_id: PLAN_ID });
+          createOrder(_data, actions) {
+            return actions.order.create({
+              purchase_units: [
+                {
+                  amount: { value: PACK_PRICE_USD.toFixed(2), currency_code: "USD" },
+                  description: `Thynkk ${PACK_NAME} — 3 full growth scans`,
+                },
+              ],
+            });
           },
           async onApprove(data) {
-            const subscriptionId = data.subscriptionID;
-            if (!subscriptionId) {
-              onError?.("PayPal did not return a subscription ID.");
+            const orderId = data.orderID;
+            if (!orderId) {
+              onError?.("PayPal did not return an order ID.");
               return;
             }
             setBusy(true);
             try {
-              await onSuccess(subscriptionId);
+              await onSuccess(orderId);
             } catch (e: unknown) {
-              const msg = e instanceof Error ? e.message : "Subscription activation failed.";
+              const msg = e instanceof Error ? e.message : "Payment failed.";
               onError?.(msg);
             } finally {
               setBusy(false);
@@ -102,7 +118,7 @@ export function PayPalSubscribe({ onSuccess, onError }: PayPalSubscribeProps) {
     }
 
     const script = document.createElement("script");
-    script.src = `https://www.paypal.com/sdk/js?client-id=${CLIENT_ID}&vault=true&intent=subscription`;
+    script.src = `https://www.paypal.com/sdk/js?client-id=${CLIENT_ID}&currency=USD&intent=capture`;
     script.async = true;
     script.dataset.thynkkPaypal = "true";
     script.onload = renderButtons;
@@ -123,7 +139,7 @@ export function PayPalSubscribe({ onSuccess, onError }: PayPalSubscribeProps) {
     <div className="relative">
       {busy && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0A0F1E]/80 rounded-md">
-          <p className="text-sm font-mono text-[#94A3B8]">Activating Pro…</p>
+          <p className="text-sm font-mono text-[#94A3B8]">Adding scans…</p>
         </div>
       )}
       <div ref={containerRef} className="min-h-[120px]" />

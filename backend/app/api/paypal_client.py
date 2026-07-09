@@ -1,10 +1,14 @@
-"""PayPal REST API helpers for subscription verification."""
+"""PayPal REST API helpers — one-time order capture."""
 
 import os
 from functools import lru_cache
 
 import httpx
 
+PAYPAL_PACK_PRICE = os.environ.get("PAYPAL_PACK_PRICE", "19.00")
+PAYPAL_PACK_CURRENCY = os.environ.get("PAYPAL_PACK_CURRENCY", "USD")
+
+# Legacy subscription plan (deprecated — kept for old webhook events)
 PAYPAL_PLAN_ID = os.environ.get("PAYPAL_PLAN_ID", "P-57T49130US0841254NI3ATSY")
 
 
@@ -37,7 +41,66 @@ def get_access_token() -> str:
         return resp.json()["access_token"]
 
 
+def capture_order(order_id: str) -> dict:
+    token = get_access_token()
+    with httpx.Client(timeout=30.0) as client:
+        resp = client.post(
+            f"{_api_base()}/v2/checkout/orders/{order_id}/capture",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            json={},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+def get_order(order_id: str) -> dict:
+    token = get_access_token()
+    with httpx.Client(timeout=30.0) as client:
+        resp = client.get(
+            f"{_api_base()}/v2/checkout/orders/{order_id}",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+def order_payment_completed(order: dict) -> tuple[str, str]:
+    """Return (amount, currency) if order capture succeeded with expected price."""
+    status = order.get("status", "").upper()
+    if status not in {"COMPLETED", "APPROVED"}:
+        raise ValueError(f"Order status is {status}, expected COMPLETED")
+
+    units = order.get("purchase_units") or []
+    if not units:
+        raise ValueError("Order has no purchase units")
+
+    captures = units[0].get("payments", {}).get("captures") or []
+    amount_block = None
+    if captures:
+        amount_block = captures[0].get("amount")
+    if not amount_block:
+        amount_block = units[0].get("amount")
+
+    if not amount_block:
+        raise ValueError("Order has no amount")
+
+    value = str(amount_block.get("value", ""))
+    currency = str(amount_block.get("currency_code", "")).upper()
+    if currency != PAYPAL_PACK_CURRENCY:
+        raise ValueError(f"Unexpected currency {currency}")
+    if value != PAYPAL_PACK_PRICE:
+        raise ValueError(f"Unexpected amount {value}, expected {PAYPAL_PACK_PRICE}")
+    return value, currency
+
+
 def get_subscription(subscription_id: str) -> dict:
+    """Legacy subscription lookup."""
     token = get_access_token()
     with httpx.Client(timeout=30.0) as client:
         resp = client.get(
@@ -53,18 +116,8 @@ def get_subscription(subscription_id: str) -> dict:
 
 
 def subscription_is_active(subscription_id: str) -> dict:
-    """Return subscription payload if active and on the expected plan."""
     data = get_subscription(subscription_id)
     status = data.get("status", "").upper()
     if status not in {"ACTIVE", "APPROVED"}:
         raise ValueError(f"Subscription status is {status}, expected ACTIVE")
-
-    plan_id = data.get("plan_id")
-    if not plan_id:
-        plan = data.get("plan") or {}
-        plan_id = plan.get("id")
-
-    if plan_id and plan_id != PAYPAL_PLAN_ID:
-        raise ValueError(f"Subscription plan mismatch: {plan_id}")
-
     return data
