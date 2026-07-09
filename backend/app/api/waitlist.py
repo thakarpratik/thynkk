@@ -105,6 +105,23 @@ class WaitlistJoinResponse(BaseModel):
     message: str
 
 
+class WaitlistAdmitRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        email = v.strip().lower()
+        if not _EMAIL_RE.match(email):
+            raise ValueError("Invalid email address.")
+        return email
+
+
+class WaitlistAdmitResponse(BaseModel):
+    email: str
+    admitted: bool
+
+
 class WaitlistStatsResponse(BaseModel):
     display_count: int
     signups: int
@@ -178,5 +195,27 @@ def join_waitlist(
         position=position,
         display_count=display_count,
         already_joined=False,
-        message="You're on the list. We'll email your invite — usually within 48 hours.",
+        message="You're on the list.",
     )
+
+
+@router.post("/admit", response_model=WaitlistAdmitResponse)
+def admit_waitlist(
+    body: WaitlistAdmitRequest,
+    engine: Engine = Depends(get_engine),
+) -> WaitlistAdmitResponse:
+    ensure_waitlist_table(engine)
+    now = datetime.now(timezone.utc)
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT invited_at FROM waitlist WHERE email = :email"),
+            {"email": body.email},
+        ).fetchone()
+        if not row:
+            return WaitlistAdmitResponse(email=body.email, admitted=False)
+        if row[0] is None:
+            conn.execute(
+                text("UPDATE waitlist SET invited_at = :now WHERE email = :email"),
+                {"now": now, "email": body.email},
+            )
+    return WaitlistAdmitResponse(email=body.email, admitted=True)

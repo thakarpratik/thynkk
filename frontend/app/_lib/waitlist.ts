@@ -47,3 +47,24 @@ export async function joinWaitlist(email: string, source = "homepage"): Promise<
   }
   return body as WaitlistJoinResult;
 }
+
+export async function admitWaitlist(email: string): Promise<void> {
+  await fetch(`${BASE}/waitlist/admit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  }).catch(() => null);
+}
+
+const WAITLIST_EMAIL_KEY = "thynkk_waitlist_email";
+
+export function storeWaitlistEmail(email: string): void {
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(WAITLIST_EMAIL_KEY, email);
+  }
+}
+
+export function getWaitlistEmail(): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(WAITLIST_EMAIL_KEY);
+}

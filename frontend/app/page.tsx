@@ -35,7 +35,7 @@ export default function LandingPage() {
             You know Reddit works — but finding the right threads, writing replies, and showing up consistently eats <span className="text-[#F8FAFC]">hours every week</span>. Thynkk does the grind for you.
           </p>
           <p className="text-base text-[#64748B] max-w-xl mx-auto mb-10 leading-relaxed">
-            Join the waitlist for priority access — or try one free scan now. We find the threads, draft the replies, and save you hours every week.
+            Request access with your email. We find the threads, draft the replies, and save you hours every week.
           </p>
           <HeroCTA />
         </div>
@@ -192,7 +192,7 @@ export default function LandingPage() {
             Reddit traffic works.<br /><span className="text-gradient">Stop grinding for it.</span>
           </h2>
           <p className="text-[#94A3B8] mb-8 max-w-lg mx-auto leading-relaxed">
-            Join the waitlist for your invite — or run one free scan while you wait.
+            Enter your email. If a spot opens up, you&apos;re in — then straight to your first scan.
           </p>
           <WaitlistForm source="homepage-footer" variant="footer" />
         </div>
