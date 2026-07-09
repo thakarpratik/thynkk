@@ -12,6 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from app.api.email_guard import check_email_domain
+from app.email import send_waitlist_admitted_async, send_waitlist_joined_async
 
 router = APIRouter(prefix="/waitlist", tags=["waitlist"])
 
@@ -190,6 +191,8 @@ def join_waitlist(
             message="You're already on the list. We'll email you when your invite is ready.",
         )
 
+    send_waitlist_joined_async(body.email, position)
+
     return WaitlistJoinResponse(
         email=body.email,
         position=position,
@@ -206,6 +209,7 @@ def admit_waitlist(
 ) -> WaitlistAdmitResponse:
     ensure_waitlist_table(engine)
     now = datetime.now(timezone.utc)
+    first_admit = False
     with engine.begin() as conn:
         row = conn.execute(
             text("SELECT invited_at FROM waitlist WHERE email = :email"),
@@ -214,8 +218,13 @@ def admit_waitlist(
         if not row:
             return WaitlistAdmitResponse(email=body.email, admitted=False)
         if row[0] is None:
+            first_admit = True
             conn.execute(
                 text("UPDATE waitlist SET invited_at = :now WHERE email = :email"),
                 {"now": now, "email": body.email},
             )
+
+    if first_admit:
+        send_waitlist_admitted_async(body.email)
+
     return WaitlistAdmitResponse(email=body.email, admitted=True)
