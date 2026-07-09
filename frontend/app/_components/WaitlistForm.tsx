@@ -27,6 +27,11 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Minimum time on "entering" before showing the slot message */
+const ENTERING_MS = 2_500;
+/** Full waitlist theater must run at least this long before "You're in" */
+const MIN_FLOW_MS = 5_000;
+
 export function WaitlistForm({ source = "homepage", variant = "hero" }: WaitlistFormProps) {
   const router = useRouter();
   const { isSignedIn, isLoaded } = useAuth();
@@ -58,13 +63,17 @@ export function WaitlistForm({ source = "homepage", variant = "hero" }: Waitlist
     setError("");
     setPhase("entering");
 
+    const flowStart = Date.now();
     const apiPromise = joinWaitlist(trimmed, source);
 
-    await delay(1400);
+    await delay(ENTERING_MS);
     setPhase("slot");
 
     try {
-      const [data] = await Promise.all([apiPromise, delay(1600)]);
+      const data = await apiPromise;
+      const elapsed = Date.now() - flowStart;
+      await delay(Math.max(0, MIN_FLOW_MS - elapsed));
+
       setResult(data);
       setStats((prev) =>
         prev && !data.already_joined
