@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PRO_FEATURE_LIST, PRO_PRICE_LABEL } from "../../_lib/pricing";
 import { PayPalSubscribe } from "./PayPalSubscribe";
 
 interface UpgradeModalProps {
@@ -48,7 +49,7 @@ export function UpgradeModal({ open, onClose, onSuccess, error: externalError }:
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
               <p className="text-[10px] font-mono text-[#6366F1] uppercase tracking-widest mb-1">Pro</p>
-              <h2 className="font-mono font-bold text-lg text-[#F8FAFC]">Unlock full reports</h2>
+              <h2 className="font-mono font-bold text-lg text-[#F8FAFC]">Unlock full growth reports</h2>
             </div>
             <button
               onClick={onClose}
@@ -60,11 +61,11 @@ export function UpgradeModal({ open, onClose, onSuccess, error: externalError }:
           </div>
 
           <p className="text-sm text-[#94A3B8] mb-4 leading-relaxed">
-            $19/month — 50 scans, full pain-point reports, Trend Radar, exports, and weekly digests.
+            {PRO_PRICE_LABEL} — full Reddit growth reports with reply drafts, post ideas, and enough monthly scans for real launches (not scan spam).
           </p>
 
           <ul className="space-y-2 text-xs text-[#94A3B8] mb-5">
-            {["Full pain-point reports", "50 scans per month", "Full Trend Radar feed", "CSV + PDF exports"].map((item) => (
+            {PRO_FEATURE_LIST.map((item) => (
               <li key={item} className="flex items-center gap-2">
                 <span className="text-[#22C55E]">✓</span>
                 {item}

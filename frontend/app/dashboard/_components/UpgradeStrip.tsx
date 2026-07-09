@@ -1,3 +1,5 @@
+import { PRO_SCANS_PER_MONTH } from "../../_lib/pricing";
+
 interface UpgradeStripProps {
   variant: "scanner" | "radar" | "growth" | "growth-posts";
   hiddenCount?: number;
@@ -20,12 +22,13 @@ export function UpgradeStrip({ variant, hiddenCount = 0, onUpgrade }: UpgradeStr
           ? "Unlock the full report"
           : "Unlock the full Trend Radar feed";
 
+  const scanLabel = `${PRO_SCANS_PER_MONTH} site scans/month`;
   const subtitle =
     variant === "growth" || variant === "growth-posts"
-      ? "Pro: all threads, full reply drafts, all post ideas, 50 site scans/month"
+      ? `Pro: all threads, full reply drafts, all post ideas, ${scanLabel}`
       : variant === "scanner"
-        ? "Pro: all themes, exact scores, opportunity analysis, CSV export, 50 scans/month"
-        : "Pro: every trending niche, full momentum data, 50 scans/month";
+        ? `Pro: all themes, exact scores, opportunity analysis, CSV export, ${scanLabel}`
+        : `Pro: every trending niche, full momentum data, ${scanLabel}`;
 
   return (
     <div className="flex items-center justify-between gap-4 px-5 py-4 bg-[#0E1223] border border-[#6366F1]/30 rounded-lg mt-4">

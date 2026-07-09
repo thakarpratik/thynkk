@@ -1,5 +1,6 @@
 import type { ScanStatus } from "../_types";
 import type { QuotaStatus } from "../_lib/api";
+import { PRO_SCANS_PER_MONTH } from "../../_lib/pricing";
 
 interface ScanInputProps {
   query: string;
@@ -52,7 +53,7 @@ export function ScanInput({ query, status, quota, onChange, onScan, onUpgrade }:
         <p className="mt-2 text-xs text-[#94A3B8]">
           You&apos;ve used your free scan. Reopen it from Recent scans below, or{" "}
           <button type="button" onClick={onUpgrade} className="text-[#6366F1] cursor-pointer hover:underline">upgrade to Pro</button>
-          {" "}for 50 scans/month.
+          {" "}for {PRO_SCANS_PER_MONTH} scans/month.
         </p>
       )}
     </div>

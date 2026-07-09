@@ -1,5 +1,6 @@
 import { SiteNav } from "../_components/SiteNav";
 import { SiteFooter } from "../_components/SiteFooter";
+import { PRO_PRICE_USD, PRO_SCANS_PER_MONTH } from "../_lib/pricing";
 
 export const metadata = {
   title: "Terms & Conditions",
@@ -32,7 +33,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono font-bold text-lg text-[#F8FAFC] mb-3">3. Free and Paid Tiers</h2>
-            <p>The free tier grants one (1) lifetime scan with limited results. The Pro tier ($19/month) provides 50 scans per calendar month and full report access. Scan counts reset on the first day of each calendar month for paid subscribers. Unused scans do not roll over.</p>
+            <p>The free tier grants one (1) lifetime scan with limited results. The Pro tier (${PRO_PRICE_USD}/month) provides {PRO_SCANS_PER_MONTH} scans per calendar month and full report access. Scan counts reset on the first day of each calendar month for paid subscribers. Unused scans do not roll over.</p>
           </section>
 
           <section>

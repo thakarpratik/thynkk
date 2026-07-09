@@ -1,9 +1,10 @@
 """Scan quota enforcement — keyed by Clerk user when authenticated, else IP.
 
 Free tier:  1 scan total (lifetime)
-Paid tier: 50 scans per calendar month
+Paid tier: 10 scans per calendar month (override via PAID_SCAN_LIMIT env)
 """
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -15,7 +16,7 @@ from app.api.clerk_auth import OptionalClerkId
 from app.api.users import user_is_paid
 
 FREE_LIMIT = 1
-PAID_LIMIT = 50
+PAID_LIMIT = int(os.environ.get("PAID_SCAN_LIMIT", "10"))
 FREE_IP_LIMIT = 2  # lifetime free scans per IP, across all accounts
 
 router = APIRouter(prefix="/quota", tags=["quota"])

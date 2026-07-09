@@ -1,5 +1,6 @@
 import type { ScanStatus } from "../_types";
 import type { QuotaStatus } from "../_lib/api";
+import { PRO_SCANS_PER_MONTH } from "../../_lib/pricing";
 
 interface GrowthScanInputProps {
   url: string;
@@ -59,7 +60,7 @@ export function GrowthScanInput({ url, status, quota, onChange, onScan, onUpgrad
           <button type="button" onClick={onUpgrade} className="text-primary font-medium cursor-pointer hover:underline">
             Upgrade to Pro
           </button>{" "}
-          for 50 scans/month and full reply drafts.
+          for {PRO_SCANS_PER_MONTH} scans/month and full reply drafts.
         </p>
       )}
     </section>

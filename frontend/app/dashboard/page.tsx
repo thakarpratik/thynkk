@@ -25,13 +25,14 @@ import { ThreadCard } from "./_components/ThreadCard";
 import { PostIdeaCard } from "./_components/PostIdeaCard";
 import { UpgradeStrip } from "./_components/UpgradeStrip";
 import { UpgradeModal } from "./_components/UpgradeModal";
+import { PRO_SCANS_PER_MONTH } from "../_lib/pricing";
 
 const POLL_INTERVAL_MS = 3000;
 
 function formatScanError(e: unknown): string {
   if (!(e instanceof Error)) return "Could not start scan. Please try again.";
   const msg = e.message;
-  if (msg === "quota_exceeded") return "Scan limit reached. Upgrade to Pro for 50 scans/month.";
+  if (msg === "quota_exceeded") return `Scan limit reached. Upgrade to Pro for ${PRO_SCANS_PER_MONTH} scans/month.`;
   if (msg === "ip_quota_exceeded") return "Free scan limit reached for this network. Upgrade to Pro for more scans.";
   if (msg === "email_not_verified") return "Please verify your email before scanning.";
   if (msg === "auth_invalid") return "Session expired. Sign out and sign back in, then try again.";
