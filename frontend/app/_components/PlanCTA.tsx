@@ -61,10 +61,10 @@ export function PlanCTA({ plan }: PlanCTAProps) {
     if (!isSignedIn) {
       return (
         <Link
-          href="/dashboard"
+          href="/"
           className={`${base} border border-[#1E293B] hover:border-[#6366F1] text-[#F8FAFC]`}
         >
-          Get started free
+          Join waitlist — free scan
         </Link>
       );
     }
@@ -94,10 +94,10 @@ export function PlanCTA({ plan }: PlanCTAProps) {
   if (!isSignedIn) {
     return (
       <Link
-        href="/dashboard"
+        href="/"
         className={`${base} bg-[#6366F1] hover:bg-[#4F46E5] text-white transition-colors`}
       >
-        Start free trial
+        Get access, then upgrade
       </Link>
     );
   }
