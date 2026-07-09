@@ -4,7 +4,8 @@ import { SiteNav } from "./_components/SiteNav";
 import { SiteFooter } from "./_components/SiteFooter";
 import { PlanCTA } from "./_components/PlanCTA";
 import { LiveActivity } from "./_components/LiveActivity";
-import { HeroScanInput } from "./_components/HeroScanInput";
+import { HeroCTA } from "./_components/HeroCTA";
+import { WaitlistForm } from "./_components/WaitlistForm";
 
 export const metadata: Metadata = {
   title: "Thynkk — Reddit Traffic Without the Hours of Grinding",
@@ -25,7 +26,7 @@ export default function LandingPage() {
       <section className="pt-40 pb-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <LiveActivity />
-          <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">Reddit traffic is the real deal</p>
+          <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">Invite-only beta · Rolling access</p>
           <h1 className="font-mono text-5xl md:text-6xl font-bold mb-6 leading-tight">
             Hours of scanning.<br />
             <span className="text-gradient">Done in 60 seconds.</span>
@@ -34,12 +35,9 @@ export default function LandingPage() {
             You know Reddit works — but finding the right threads, writing replies, and showing up consistently eats <span className="text-[#F8FAFC]">hours every week</span>. Thynkk does the grind for you.
           </p>
           <p className="text-base text-[#64748B] max-w-xl mx-auto mb-10 leading-relaxed">
-            Paste your site. We scan communities, rank the conversations worth joining, and draft replies you can paste — so you get targeted, organic traffic without living on Reddit.
+            Join the waitlist for priority access — or try one free scan now. We find the threads, draft the replies, and save you hours every week.
           </p>
-          <div className="mb-4">
-            <HeroScanInput />
-          </div>
-          <p className="text-sm text-[#94A3B8]">Free scan · No credit card</p>
+          <HeroCTA />
         </div>
       </section>
 
@@ -194,11 +192,9 @@ export default function LandingPage() {
             Reddit traffic works.<br /><span className="text-gradient">Stop grinding for it.</span>
           </h2>
           <p className="text-[#94A3B8] mb-8 max-w-lg mx-auto leading-relaxed">
-            Your customers are on Reddit right now, asking for tools like yours. Paste your site — find the threads, copy the replies, skip the hours.
+            Join the waitlist for your invite — or run one free scan while you wait.
           </p>
-          <div className="max-w-xl mx-auto">
-            <HeroScanInput />
-          </div>
+          <WaitlistForm source="homepage-footer" variant="footer" />
         </div>
       </section>
 
