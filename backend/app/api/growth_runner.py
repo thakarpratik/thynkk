@@ -50,8 +50,13 @@ def _run(
             product["product_name"],
             product["niche_label"],
             product.get("keywords", []),
+            product_summary=product.get("product_summary", ""),
         )
-        hits = search_threads(queries)
+        hits = search_threads(
+            queries,
+            niche=product["niche_label"],
+            keywords=product.get("keywords", []),
+        )
         if not hits:
             store.update(
                 scan_id,

@@ -14,6 +14,7 @@ load_dotenv()
 
 SERPER_URL = "https://google.serper.dev/search"
 _COMMUNITY_DOMAINS = ("reddit.com", "quora.com")
+_MIN_HITS_BEFORE_BROAD = 12
 
 
 @dataclass
@@ -23,6 +24,7 @@ class DiscoveredThread:
     snippet: str
     source: str  # reddit | quora | other
     query: str
+    date: str = ""
 
 
 def _source_from_url(url: str) -> str:
@@ -55,24 +57,7 @@ def _is_community_thread(url: str) -> bool:
     return True
 
 
-def build_queries(product_name: str, niche: str, keywords: list[str]) -> list[str]:
-    """Generate Serper queries for community thread discovery."""
-    kw = [k for k in keywords if k][:4]
-    queries: list[str] = []
-
-    if product_name:
-        queries.append(f'"{product_name}" recommendation site:reddit.com')
-        queries.append(f'"{product_name}" alternative site:reddit.com')
-
-    if niche:
-        queries.append(f'"{niche}" tool recommendation site:reddit.com')
-        queries.append(f'how do I {niche} site:reddit.com')
-
-    for k in kw:
-        queries.append(f'"{k}" anyone know site:reddit.com')
-        queries.append(f'site:reddit.com "{k}"')
-
-    # Dedupe while preserving order
+def _dedupe_queries(queries: list[str], limit: int) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []
     for q in queries:
@@ -80,15 +65,141 @@ def build_queries(product_name: str, niche: str, keywords: list[str]) -> list[st
         if key not in seen:
             seen.add(key)
             out.append(q)
-    return out[:8]
+        if len(out) >= limit:
+            break
+    return out
+
+
+def build_queries(
+    product_name: str,
+    niche: str,
+    keywords: list[str],
+    *,
+    product_summary: str = "",
+) -> list[str]:
+    """Generate Serper queries — niche/problem first (works for unknown brands)."""
+    kw = [k.strip() for k in keywords if k and k.strip()][:6]
+    queries: list[str] = []
+
+    # Niche pain queries (primary for sites nobody has heard of)
+    if niche:
+        niche_core = niche.split("+")[0].strip()[:80]
+        queries.extend([
+            f"{niche_core} recommendation site:reddit.com",
+            f"best {niche_core} site:reddit.com",
+            f"looking for {niche_core} site:reddit.com",
+            f"help with {niche_core} site:reddit.com",
+        ])
+
+    for k in kw:
+        queries.extend([
+            f"{k} site:reddit.com",
+            f"recommend {k} site:reddit.com",
+            f"what {k} do you use site:reddit.com",
+            f"frustrated with {k} site:reddit.com",
+        ])
+
+    # Pull extra terms from summary (first few meaningful phrases)
+    if product_summary:
+        for term in _summary_terms(product_summary):
+            queries.append(f"{term} site:reddit.com")
+
+    # Brand queries last — usually empty for indie sites
+    brand = (product_name or "").strip()
+    if brand and len(brand) > 2:
+        queries.append(f"{brand} site:reddit.com")
+        if brand.lower() not in (niche or "").lower():
+            queries.append(f'"{brand}" alternative site:reddit.com')
+
+    return _dedupe_queries(queries, 14)
+
+
+def build_broad_fallback_queries(niche: str, keywords: list[str]) -> list[str]:
+    """Broader queries when recent search returns too few hits."""
+    kw = [k.strip() for k in keywords if k and k.strip()][:4]
+    queries: list[str] = []
+
+    if niche:
+        token = niche.split()[0][:40] if niche.split() else niche[:40]
+        queries.extend([
+            f"site:reddit.com {token}",
+            f"site:reddit.com {token} tool",
+            f"site:reddit.com {token} app",
+        ])
+
+    for k in kw:
+        queries.extend([
+            f"site:reddit.com {k}",
+            f"site:reddit.com {k} advice",
+        ])
+
+    return _dedupe_queries(queries, 8)
+
+
+def _summary_terms(summary: str) -> list[str]:
+    """Extract short searchable phrases from product summary."""
+    cleaned = re.sub(r"[^\w\s&+-]", " ", summary.lower())
+    words = [w for w in cleaned.split() if len(w) > 3][:12]
+    terms: list[str] = []
+    if len(words) >= 2:
+        terms.append(" ".join(words[:3]))
+    if len(words) >= 4:
+        terms.append(" ".join(words[2:5]))
+    return terms[:2]
+
+
+def _serper_search(
+    client: httpx.Client,
+    headers: dict[str, str],
+    query: str,
+    *,
+    per_query: int,
+    tbs: str | None,
+) -> list[dict]:
+    payload: dict = {"q": query, "num": per_query}
+    if tbs:
+        payload["tbs"] = tbs
+    resp = client.post(SERPER_URL, headers=headers, json=payload)
+    resp.raise_for_status()
+    return resp.json().get("organic", [])
+
+
+def _collect_hits(
+    organic: list[dict],
+    query: str,
+    seen_urls: set[str],
+) -> list[DiscoveredThread]:
+    found: list[DiscoveredThread] = []
+    for item in organic:
+        url = item.get("link", "")
+        if not url or not _is_community_thread(url):
+            continue
+        norm = _normalize_url(url)
+        if norm in seen_urls:
+            continue
+        seen_urls.add(norm)
+        found.append(
+            DiscoveredThread(
+                title=item.get("title", ""),
+                url=norm,
+                snippet=item.get("snippet", ""),
+                source=_source_from_url(norm),
+                query=query,
+                date=item.get("date", "") or "",
+            )
+        )
+    return found
 
 
 def search_threads(
     queries: list[str],
     api_key: str | None = None,
-    per_query: int = 8,
+    per_query: int = 10,
+    *,
+    niche: str = "",
+    keywords: list[str] | None = None,
 ) -> list[DiscoveredThread]:
-    """Run Serper queries and return deduped community thread hits."""
+    """Run Serper queries — recent threads first, broaden if sparse."""
     key = api_key or os.environ.get("SERPER_API_KEY", "")
     if not key:
         raise RuntimeError("SERPER_API_KEY is not configured.")
@@ -98,30 +209,22 @@ def search_threads(
     results: list[DiscoveredThread] = []
 
     with httpx.Client(timeout=30) as client:
+        # Pass 1: prefer threads from the past year
         for query in queries:
-            resp = client.post(
-                SERPER_URL,
-                headers=headers,
-                json={"q": query, "num": per_query},
-            )
-            resp.raise_for_status()
-            organic = resp.json().get("organic", [])
-            for item in organic:
-                url = item.get("link", "")
-                if not url or not _is_community_thread(url):
-                    continue
-                norm = _normalize_url(url)
-                if norm in seen_urls:
-                    continue
-                seen_urls.add(norm)
-                results.append(
-                    DiscoveredThread(
-                        title=item.get("title", ""),
-                        url=norm,
-                        snippet=item.get("snippet", ""),
-                        source=_source_from_url(norm),
-                        query=query,
-                    )
-                )
+            organic = _serper_search(client, headers, query, per_query=per_query, tbs="qdr:y")
+            results.extend(_collect_hits(organic, query, seen_urls))
+
+        # Pass 2: broaden without recency filter if pool is thin
+        if len(results) < _MIN_HITS_BEFORE_BROAD:
+            fallback = build_broad_fallback_queries(niche, keywords or [])
+            for query in fallback:
+                organic = _serper_search(client, headers, query, per_query=per_query, tbs=None)
+                results.extend(_collect_hits(organic, query, seen_urls))
+
+        # Pass 3: re-run primary queries without recency if still thin
+        if len(results) < 8:
+            for query in queries[:6]:
+                organic = _serper_search(client, headers, query, per_query=per_query, tbs=None)
+                results.extend(_collect_hits(organic, f"{query} (broad)", seen_urls))
 
     return results

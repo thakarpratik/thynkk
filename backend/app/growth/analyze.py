@@ -56,9 +56,10 @@ class GrowthReport(BaseModel):
 
 def _format_hits(hits: list[DiscoveredThread]) -> str:
     blocks = []
-    for i, h in enumerate(hits[:25], 1):
+    for i, h in enumerate(hits[:30], 1):
+        date_line = f"\n   Date: {h.date}" if h.date else ""
         blocks.append(
-            f"{i}. [{h.source}] {h.title}\n   URL: {h.url}\n   Snippet: {h.snippet}\n   Found via: {h.query}"
+            f"{i}. [{h.source}] {h.title}\n   URL: {h.url}\n   Snippet: {h.snippet}{date_line}\n   Found via: {h.query}"
         )
     return "\n\n".join(blocks)
 

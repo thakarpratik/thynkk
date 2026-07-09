@@ -14,13 +14,15 @@ SEARCH HITS ({{hit_count}} threads)
 
 Rules:
 - Rank threads by how answerable they are WITHOUT being spammy
+- STRONGLY prefer threads from the last 12 months (use Date field when present). Deprioritize or exclude threads clearly older than 2 years unless fewer than 5 recent threads exist in the hits
+- For unknown brands, match on PROBLEM and NICHE fit — not whether the thread mentions the product by name
 - Prefer: questions, recommendations, "how do I", "what tool", complaints seeking solutions
-- Deprioritize: memes, drama, unrelated politics, megathreads with 50+ brands already
+- Deprioritize: memes, drama, unrelated politics, megathreads with 50+ brands already, ancient dead threads
+- Return 5-10 threads when {{hit_count}} >= 5; never return only 1-2 threads if more viable hits exist
 - suggested_reply: helpful first, product mention only if natural (last line or when asked for tools)
 - promo_risk: low | medium | high based on how salesy the draft sounds
 - post_ideas: 3-5 original posts the founder could write (not copies of existing threads)
 - target_community: subreddit or Quora topic name (e.g. r/SaaS)
-- Return 5-10 threads max, 3-5 post ideas
 
 JSON schema:
 {
