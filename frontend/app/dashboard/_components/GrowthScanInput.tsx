@@ -21,41 +21,39 @@ export function GrowthScanInput({ url, status, quota, onChange, onScan, onUpgrad
 
   return (
     <section className="mb-8 rounded-xl border border-border bg-card p-5 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-        <div className="flex-1 min-w-0">
-          <label htmlFor="site-url" className="block text-sm font-medium text-foreground mb-2">
-            Your website URL
-          </label>
-          <input
-            id="site-url"
-            type="url"
-            value={url}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !disabled && onScan()}
-            placeholder="https://yourproduct.com"
-            disabled={exhausted || isLoading}
-            className="w-full bg-background border border-input focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none text-foreground placeholder:text-muted-foreground/50 px-4 py-3 rounded-lg text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          />
-          {quota && (
-            <p className={`text-xs mt-2 ${exhausted ? "text-destructive" : "text-muted-foreground"}`}>
-              {exhausted
-                ? "No scans left."
-                : quota.scan_credits > 0
-                  ? `${quota.scan_credits} full scan${quota.scan_credits === 1 ? "" : "s"} left`
-                  : quota.free_available
-                    ? "1 free scan available"
-                    : `${quota.remaining} scan${quota.remaining === 1 ? "" : "s"} left`}
-            </p>
-          )}
-        </div>
+      <label htmlFor="site-url" className="block text-sm font-medium text-foreground mb-2">
+        Your website URL
+      </label>
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+        <input
+          id="site-url"
+          type="url"
+          value={url}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !disabled && onScan()}
+          placeholder="https://yourproduct.com"
+          disabled={exhausted || isLoading}
+          className="flex-1 min-w-0 w-full bg-background border border-input focus:border-primary focus:ring-1 focus:ring-primary/30 outline-none text-foreground placeholder:text-muted-foreground/50 px-4 py-3 rounded-lg text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        />
         <button
           onClick={onScan}
           disabled={disabled}
-          className="shrink-0 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground px-6 py-3 rounded-lg font-medium text-sm transition-colors cursor-pointer whitespace-nowrap w-full sm:w-auto"
+          className="shrink-0 h-11 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground px-6 rounded-lg font-medium text-sm transition-colors cursor-pointer whitespace-nowrap w-full sm:w-auto"
         >
           {isLoading ? "Scanning…" : "Start scan"}
         </button>
       </div>
+      {quota && (
+        <p className={`text-xs mt-2 ${exhausted ? "text-destructive" : "text-muted-foreground"}`}>
+          {exhausted
+            ? "No scans left."
+            : quota.scan_credits > 0
+              ? `${quota.scan_credits} full scan${quota.scan_credits === 1 ? "" : "s"} left`
+              : quota.free_available
+                ? "1 free scan available"
+                : `${quota.remaining} scan${quota.remaining === 1 ? "" : "s"} left`}
+        </p>
+      )}
       {exhausted && (
         <p className="mt-4 text-sm text-muted-foreground rounded-lg bg-muted/50 px-4 py-3">
           You&apos;ve used all scans.{" "}
