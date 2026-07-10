@@ -7,7 +7,10 @@ PUBLIC = ROOT / "public"
 APP = ROOT / "app"
 SRC = Path(r"C:\Users\thaka\Downloads\thynkk-web\public")
 
-icon_src = Image.open(SRC / "thynkkicon.png").convert("RGBA")
+favicon_path = SRC / "Favicon.jpg"
+if not favicon_path.exists():
+    favicon_path = SRC / "thynkkicon.png"
+icon_src = Image.open(favicon_path).convert("RGBA")
 logo_src = Image.open(SRC / "ThynkkLogo.png").convert("RGBA")
 
 
