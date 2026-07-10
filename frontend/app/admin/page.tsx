@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BrandLogo } from "../_components/BrandLogo";
 
 const API =
   typeof window !== "undefined"
@@ -93,9 +94,10 @@ export default function AdminPage() {
     return (
       <div className="min-h-dvh bg-[#020617] text-[#F8FAFC] flex items-center justify-center">
         <div className="w-full max-w-sm">
-          <p className="font-mono font-bold text-lg mb-6">
-            thynkk<span className="text-[#6366F1]">.</span> admin
-          </p>
+          <div className="flex items-center gap-2 mb-6">
+            <BrandLogo href="" className="h-7 w-auto" />
+            <span className="font-mono font-bold text-lg text-[#94A3B8]">admin</span>
+          </div>
           <input
             type="password"
             placeholder="Admin secret"
@@ -126,9 +128,10 @@ export default function AdminPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <p className="font-mono font-bold text-xl">
-              thynkk<span className="text-[#6366F1]">.</span> admin
-            </p>
+            <div className="flex items-center gap-2">
+              <BrandLogo href="" className="h-7 w-auto" />
+              <span className="font-mono font-bold text-xl text-[#94A3B8]">admin</span>
+            </div>
             <p className="text-xs text-[#475569] mt-0.5 font-mono">Auto-refreshes every 30s</p>
           </div>
           <button

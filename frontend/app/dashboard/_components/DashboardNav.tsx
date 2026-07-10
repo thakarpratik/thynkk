@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import type { QuotaStatus } from "../_lib/api";
+import { BrandLogo } from "../../_components/BrandLogo";
 
 interface DashboardNavProps {
   scanCredits: number;
@@ -23,9 +23,7 @@ export function DashboardNav({ scanCredits, quota, onUpgrade }: DashboardNavProp
   return (
     <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-        <Link href="/" className="font-mono font-bold text-lg tracking-tight shrink-0">
-          thynkk<span className="text-primary">.</span>
-        </Link>
+        <BrandLogo className="h-7 w-auto" />
 
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {quotaLabel && (

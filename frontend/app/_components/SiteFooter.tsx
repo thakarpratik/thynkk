@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "./BrandLogo";
 
 export function SiteFooter() {
   return (
@@ -6,9 +7,7 @@ export function SiteFooter() {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
           <div>
-            <span className="font-mono font-bold text-lg text-[#F8FAFC]">
-              thynkk<span className="text-[#6366F1]">.</span>
-            </span>
+            <BrandLogo className="h-6 w-auto" />
             <p className="text-xs text-[#475569] mt-2 leading-relaxed">
               Skip hours of Reddit scanning. Find threads, draft replies, get real traffic.
             </p>
