@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from datetime import datetime, timedelta, timezone
@@ -17,6 +18,9 @@ from app.email import send_waitlist_admitted_async, send_waitlist_joined_async
 router = APIRouter(prefix="/waitlist", tags=["waitlist"])
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+# Synthetic growth starts here so public counters keep drifting over time
+_WAITLIST_EPOCH = datetime(2026, 6, 1, tzinfo=timezone.utc)
 
 
 def get_engine() -> Engine:
@@ -38,6 +42,50 @@ def _invites_seed() -> int:
         return max(0, int(raw))
     except ValueError:
         return 312
+
+
+def _bucket_noise(key: str, *, period_seconds: int, amplitude: int) -> int:
+    """Deterministic 0..amplitude value that changes every period_seconds."""
+    if amplitude <= 0:
+        return 0
+    bucket = int(datetime.now(timezone.utc).timestamp()) // max(1, period_seconds)
+    digest = hashlib.sha256(f"{key}:{bucket}".encode()).hexdigest()
+    return int(digest[:8], 16) % (amplitude + 1)
+
+
+def _display_waitlist_count(real_signups: int) -> int:
+    """Seed + real joins + slow synthetic growth + short-period drift."""
+    now = datetime.now(timezone.utc)
+    hours = max(0.0, (now - _WAITLIST_EPOCH).total_seconds() / 3600.0)
+    # ~1.4 synthetic joins/hour so the counter keeps climbing
+    synthetic = int(hours * 1.4)
+    # Nudges every ~90s so the number visibly changes on a live page
+    drift = _bucket_noise("waitlist_count", period_seconds=90, amplitude=9)
+    return _seed_count() + real_signups + synthetic + drift
+
+
+def _display_invites_this_week(real_invited: int) -> int:
+    """Weekly admits that rise through the week and twitch during the day."""
+    now = datetime.now(timezone.utc)
+    weekday = now.weekday()  # 0=Mon
+    hours_today = now.hour + now.minute / 60.0
+    # ~42 synthetic admits/day + ~1.8/hour today
+    synthetic = int(weekday * 42 + hours_today * 1.8)
+    drift = _bucket_noise("invites_week", period_seconds=75, amplitude=6)
+    return _invites_seed() + real_invited + synthetic + drift
+
+
+def _spots_left_today() -> int:
+    """Daily capacity that shrinks as the day progresses (scarcity cue)."""
+    now = datetime.now(timezone.utc)
+    day_key = now.date().isoformat()
+    # 16–40 spots capacity for the day (stable within a day)
+    capacity = 16 + _bucket_noise(f"spots_cap:{day_key}", period_seconds=86_400, amplitude=24)
+    day_progress = (now.hour * 60 + now.minute) / (24 * 60)
+    used = int(capacity * min(0.92, day_progress * 0.95))
+    # Small live jitter every ~45s
+    jitter = _bucket_noise("spots_left", period_seconds=45, amplitude=3)
+    return max(2, capacity - used - jitter)
 
 
 def ensure_waitlist_table(engine: Engine) -> None:
@@ -127,6 +175,7 @@ class WaitlistStatsResponse(BaseModel):
     display_count: int
     signups: int
     invites_sent_this_week: int
+    spots_left_today: int
     next_batch_label: str
 
 
@@ -135,14 +184,14 @@ def waitlist_stats(engine: Engine = Depends(get_engine)) -> WaitlistStatsRespons
     ensure_waitlist_table(engine)
     signups = _total_signups(engine)
     invited = _invites_this_week(engine)
-    invites_display = _invites_seed() + invited
 
     batch = os.environ.get("WAITLIST_NEXT_BATCH_LABEL", "Thursday")
 
     return WaitlistStatsResponse(
-        display_count=_seed_count() + signups,
+        display_count=_display_waitlist_count(signups),
         signups=signups,
-        invites_sent_this_week=invites_display,
+        invites_sent_this_week=_display_invites_this_week(invited),
+        spots_left_today=_spots_left_today(),
         next_batch_label=batch,
     )
 
@@ -180,7 +229,7 @@ def join_waitlist(
                     raise
 
     position = _position_for_email(engine, body.email)
-    display_count = _seed_count() + _total_signups(engine)
+    display_count = _display_waitlist_count(_total_signups(engine))
 
     if existing:
         return WaitlistJoinResponse(

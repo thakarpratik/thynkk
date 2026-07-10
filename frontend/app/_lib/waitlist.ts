@@ -7,6 +7,7 @@ export interface WaitlistStats {
   display_count: number;
   signups: number;
   invites_sent_this_week: number;
+  spots_left_today: number;
   next_batch_label: string;
 }
 

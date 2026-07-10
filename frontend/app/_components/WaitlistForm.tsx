@@ -45,7 +45,19 @@ export function WaitlistForm({ source = "homepage", variant = "hero" }: Waitlist
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchWaitlistStats().then(setStats);
+    let cancelled = false;
+    const load = () => {
+      fetchWaitlistStats().then((s) => {
+        if (!cancelled && s) setStats(s);
+      });
+    };
+    load();
+    // Refresh often enough that social-proof numbers feel live
+    const id = setInterval(load, 12_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
   useEffect(() => {
@@ -156,16 +168,25 @@ export function WaitlistForm({ source = "homepage", variant = "hero" }: Waitlist
       {stats && isHero && (
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-mono text-[#94A3B8] mb-4">
           <span>
-            <span className="text-[#F8FAFC] font-semibold tabular-nums">{formatCount(stats.display_count)}</span>
+            <span className="text-[#F8FAFC] font-semibold tabular-nums transition-all duration-500">
+              {formatCount(stats.display_count)}
+            </span>
             {" "}on waitlist
           </span>
           <span className="text-[#475569] hidden sm:inline">·</span>
           <span>
-            <span className="text-[#6366F1] font-semibold tabular-nums">{formatCount(stats.invites_sent_this_week)}</span>
+            <span className="text-[#6366F1] font-semibold tabular-nums transition-all duration-500">
+              {formatCount(stats.invites_sent_this_week)}
+            </span>
             {" "}let in this week
           </span>
           <span className="text-[#475569] hidden sm:inline">·</span>
-          <span>Limited spots daily</span>
+          <span>
+            <span className="text-[#F59E0B] font-semibold tabular-nums transition-all duration-500">
+              {formatCount(stats.spots_left_today ?? 0)}
+            </span>
+            {" "}spots left today
+          </span>
         </div>
       )}
 
