@@ -11,6 +11,15 @@ export function SiteFooter() {
             <p className="text-xs text-[#475569] mt-2 leading-relaxed">
               Skip hours of Reddit scanning. Find threads, draft replies, get real traffic.
             </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://buildlist.io/badge.svg"
+              alt="Featured on Buildlist"
+              height={40}
+              width={160}
+              className="mt-4 opacity-90"
+              style={{ height: 40, width: "auto" }}
+            />
           </div>
           <div>
             <p className="text-xs font-mono text-[#94A3B8] uppercase tracking-widest mb-3">Product</p>
@@ -37,23 +46,8 @@ export function SiteFooter() {
             </ul>
           </div>
         </div>
-        <div className="border-t border-[#1E293B] pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[#475569]">
+        <div className="border-t border-[#1E293B] pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-[#475569]">
           <span>© 2026 Thynkk. All rights reserved.</span>
-          <a
-            href="https://buildlist.io/?ref=b8ff6991-5075-43bf-ac5c-2299f207c459"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-80 hover:opacity-100 transition-opacity"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://buildlist.io/badge.svg"
-              alt="Featured on Buildlist"
-              height={40}
-              width={160}
-              style={{ height: 40, width: "auto" }}
-            />
-          </a>
           <span>Built for indie hackers, founders, and marketers.</span>
         </div>
       </div>
