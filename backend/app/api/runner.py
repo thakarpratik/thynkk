@@ -56,6 +56,7 @@ def _run(
     ip: str = "unknown",
     account_key: str = "ip:unknown",
     clerk_id: str | None = None,
+    attribution: dict | None = None,
 ) -> None:
     store.update(scan_id, status=ScanStatus.running)
     try:
@@ -63,7 +64,10 @@ def _run(
         cached = get_cached(engine, query)
         if cached:
             store.update(scan_id, status=ScanStatus.done, result=cached, from_cache=True)
-            log_scan(ip, query, from_cache=True, status="done", themes_count=len(cached), engine=engine)
+            log_scan(
+                ip, query, from_cache=True, status="done", themes_count=len(cached), engine=engine,
+                scan_type="pain", clerk_id=clerk_id, attribution=attribution,
+            )
             _persist(engine, scan_id, query, cached, True, account_key, clerk_id)
             return
 
@@ -128,7 +132,10 @@ def _run(
 
         if not matched:
             store.update(scan_id, status=ScanStatus.failed, error="No posts found. Try a different niche or subreddit.")
-            log_scan(ip, query, from_cache=False, status="failed", themes_count=0, engine=engine)
+            log_scan(
+                ip, query, from_cache=False, status="failed", themes_count=0, engine=engine,
+                scan_type="pain", clerk_id=clerk_id, attribution=attribution,
+            )
             return
 
         # 5. Analyze + score
@@ -139,12 +146,18 @@ def _run(
         # 6. Cache + return
         set_cached(engine, query, scored)
         store.update(scan_id, status=ScanStatus.done, result=scored, from_cache=False)
-        log_scan(ip, query, from_cache=False, status="done", themes_count=len(scored), engine=engine)
+        log_scan(
+            ip, query, from_cache=False, status="done", themes_count=len(scored), engine=engine,
+            scan_type="pain", clerk_id=clerk_id, attribution=attribution,
+        )
         _persist(engine, scan_id, query, scored, False, account_key, clerk_id)
 
     except Exception as exc:
         store.update(scan_id, status=ScanStatus.failed, error=str(exc))
-        log_scan(ip, query, from_cache=False, status="failed", themes_count=0, engine=engine)
+        log_scan(
+            ip, query, from_cache=False, status="failed", themes_count=0, engine=engine,
+            scan_type="pain", clerk_id=clerk_id, attribution=attribution,
+        )
 
 
 def start_scan(
@@ -156,10 +169,11 @@ def start_scan(
     ip: str = "unknown",
     account_key: str = "ip:unknown",
     clerk_id: str | None = None,
+    attribution: dict | None = None,
 ) -> None:
     t = threading.Thread(
         target=_run,
-        args=(scan_id, query, post_limit, store, engine, ip, account_key, clerk_id),
+        args=(scan_id, query, post_limit, store, engine, ip, account_key, clerk_id, attribution),
         daemon=True,
     )
     t.start()

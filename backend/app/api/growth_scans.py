@@ -3,15 +3,22 @@
 import os
 import re
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.engine import Engine
 
+from app.api.attribution import AttributionIn, attribution_to_dict, extract_attribution
 from app.api.billing import gate_growth_report
-from app.api.clerk_auth import ClerkPayload
+from app.api.clerk_auth import ClerkId, ClerkPayload
 from app.api.email_guard import check_email_verified
 from app.api.growth_runner import start_growth_scan
+from app.api.growth_scan_history import (
+    can_access_growth_scan,
+    get_saved_growth_scan,
+    list_growth_scans,
+)
 from app.api.growth_store import GrowthScanStore, growth_scan_store
 from app.api.models import ScanStatus
 from app.api.quota import (
@@ -30,6 +37,7 @@ _URL_RE = re.compile(r"^https?://[^\s/]+", re.I)
 
 class GrowthScanRequest(BaseModel):
     url: str = Field(..., min_length=4, max_length=500)
+    attribution: AttributionIn | None = None
 
     @field_validator("url")
     @classmethod
@@ -78,6 +86,20 @@ class PostIdeaOut(BaseModel):
     target_community: str
     based_on_trend: str
     locked: bool = False
+
+
+class GrowthScanHistoryItem(BaseModel):
+    scan_id: str
+    url: str
+    product_name: str
+    tier: str
+    total_threads: int
+    from_cache: bool
+    scanned_at: datetime
+
+
+class GrowthScanHistoryResponse(BaseModel):
+    scans: list[GrowthScanHistoryItem]
 
 
 class GrowthScanReport(BaseModel):
@@ -134,29 +156,97 @@ def submit_growth_scan(
     ip = get_client_ip(request)
     key = account_key_for(request, clerk_id)
     reservation = reserve_scan(request, key, clerk_id, email, body.url, engine)
+    attr = attribution_to_dict(extract_attribution(request, body.attribution))
 
     scan_id = str(uuid.uuid4())
     record_scan_start(engine, scan_id, reservation, body.url)
     store.create(scan_id, body.url)
-    start_growth_scan(scan_id, body.url, store, engine, ip=ip)
+    start_growth_scan(
+        scan_id,
+        body.url,
+        store,
+        engine,
+        account_key=key,
+        clerk_id=clerk_id,
+        ip=ip,
+        attribution=attr,
+    )
 
     return GrowthScanCreated(scan_id=scan_id)
+
+
+@router.get("/history", response_model=GrowthScanHistoryResponse)
+def growth_scan_history(
+    clerk_id: ClerkId,
+    engine: Engine = Depends(get_engine),
+) -> GrowthScanHistoryResponse:
+    saved = list_growth_scans(engine, clerk_id=clerk_id)
+    items = [
+        GrowthScanHistoryItem(
+            scan_id=row["scan_id"],
+            url=row["url"],
+            product_name=row["product_name"] or row["url"],
+            tier=row["tier"],
+            total_threads=row["total_threads"],
+            from_cache=row["from_cache"],
+            scanned_at=row["created_at"],
+        )
+        for row in saved
+    ]
+    return GrowthScanHistoryResponse(scans=items)
+
+
+def _build_growth_report(
+    scan_id: str,
+    url: str,
+    result: dict,
+    from_cache: bool,
+    tier: str,
+) -> GrowthScanReport:
+    is_full = tier == "full"
+    gated = gate_growth_report(result, is_full)
+    return GrowthScanReport(
+        scan_id=scan_id,
+        url=url,
+        product_name=gated["product_name"],
+        niche_label=gated["niche_label"],
+        product_summary=gated["product_summary"],
+        audience=gated["audience"],
+        subreddits=gated["subreddits"],
+        threads=gated["threads"],
+        post_ideas=gated["post_ideas"],
+        total_threads=gated["total_threads"],
+        total_post_ideas=gated["total_post_ideas"],
+        from_cache=from_cache,
+        report_tier=tier,
+    )
 
 
 @router.get("/{scan_id}/status", response_model=GrowthScanStatusResponse)
 def growth_status(
     scan_id: str,
     store: GrowthScanStore = Depends(get_store),
+    engine: Engine = Depends(get_engine),
 ) -> GrowthScanStatusResponse:
     job = store.get(scan_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Scan not found.")
-    return GrowthScanStatusResponse(
-        scan_id=job.scan_id,
-        status=job.status,
-        url=job.url,
-        error=job.error,
-    )
+    if job:
+        return GrowthScanStatusResponse(
+            scan_id=job.scan_id,
+            status=job.status,
+            url=job.url,
+            error=job.error,
+        )
+
+    saved = get_saved_growth_scan(engine, scan_id)
+    if saved:
+        return GrowthScanStatusResponse(
+            scan_id=saved["scan_id"],
+            status=ScanStatus.done,
+            url=saved["url"],
+            error=None,
+        )
+
+    raise HTTPException(status_code=404, detail="Scan not found.")
 
 
 @router.get("/{scan_id}/report", response_model=GrowthScanReport)
@@ -174,29 +264,30 @@ def growth_report(
         raise HTTPException(status_code=404, detail="Scan not found.")
 
     job = store.get(scan_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Scan not found.")
-    if job.status in (ScanStatus.running, ScanStatus.queued):
-        raise HTTPException(status_code=409, detail="Scan still running.")
-    if job.status == ScanStatus.failed:
-        raise HTTPException(status_code=422, detail=job.error or "Scan failed.")
-    if not job.result:
-        raise HTTPException(status_code=422, detail="No report available.")
+    if job:
+        if job.status in (ScanStatus.running, ScanStatus.queued):
+            raise HTTPException(status_code=409, detail="Scan still running.")
+        if job.status == ScanStatus.failed:
+            raise HTTPException(status_code=422, detail=job.error or "Scan failed.")
+        if not job.result:
+            raise HTTPException(status_code=422, detail="No report available.")
+        return _build_growth_report(job.scan_id, job.url, job.result, job.from_cache, tier)
 
-    is_full = tier == "full"
-    gated = gate_growth_report(job.result, is_full)
-    return GrowthScanReport(
-        scan_id=job.scan_id,
-        url=job.url,
-        product_name=gated["product_name"],
-        niche_label=gated["niche_label"],
-        product_summary=gated["product_summary"],
-        audience=gated["audience"],
-        subreddits=gated["subreddits"],
-        threads=gated["threads"],
-        post_ideas=gated["post_ideas"],
-        total_threads=gated["total_threads"],
-        total_post_ideas=gated["total_post_ideas"],
-        from_cache=job.from_cache,
-        report_tier=tier,
+    saved = get_saved_growth_scan(engine, scan_id)
+    if not saved or not can_access_growth_scan(saved, clerk_id=clerk_id, account_key=key):
+        raise HTTPException(status_code=404, detail="Scan not found.")
+
+    store.create(scan_id, saved["url"])
+    store.update(
+        scan_id,
+        status=ScanStatus.done,
+        result=saved["report"],
+        from_cache=saved["from_cache"],
+    )
+    return _build_growth_report(
+        saved["scan_id"],
+        saved["url"],
+        saved["report"],
+        saved["from_cache"],
+        tier,
     )

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import Script from "next/script";
+import { AttributionCapture } from "./_components/AttributionCapture";
 import "./globals.css";
 
 const BASE_URL = "https://thynkk.co";
@@ -66,7 +67,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             `}
           </Script>
         </head>
-        <body className="min-h-full bg-[#020617] antialiased">{children}</body>
+        <body className="min-h-full bg-[#020617] antialiased">
+          <AttributionCapture />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );

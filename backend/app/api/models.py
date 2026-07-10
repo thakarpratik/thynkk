@@ -1,6 +1,9 @@
 import re
 from enum import Enum
+
 from pydantic import BaseModel, field_validator
+
+from app.api.attribution import AttributionIn
 
 # Subreddit name or freetext keyword, no prompt-injection payloads
 _QUERY_CLEAN = re.compile(r"[^\w\s/\-\.]")
@@ -17,6 +20,7 @@ class ScanStatus(str, Enum):
 class ScanRequest(BaseModel):
     query: str
     post_limit: int = 100
+    attribution: AttributionIn | None = None
 
     @field_validator("query")
     @classmethod

@@ -29,6 +29,7 @@ export async function fetchWaitlistStats(): Promise<WaitlistStats | null> {
 }
 
 export async function joinWaitlist(email: string, source = "homepage"): Promise<WaitlistJoinResult> {
+  // Prefer explicit source, but enrichment happens in WaitlistForm via waitlistSource()
   const res = await fetch(`${BASE}/waitlist`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

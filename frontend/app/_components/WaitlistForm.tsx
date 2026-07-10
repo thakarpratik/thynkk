@@ -3,6 +3,7 @@
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { waitlistSource } from "../_lib/attribution";
 import {
   admitWaitlist,
   fetchWaitlistStats,
@@ -64,7 +65,7 @@ export function WaitlistForm({ source = "homepage", variant = "hero" }: Waitlist
     setPhase("entering");
 
     const flowStart = Date.now();
-    const apiPromise = joinWaitlist(trimmed, source);
+    const apiPromise = joinWaitlist(trimmed, waitlistSource(source));
 
     await delay(ENTERING_MS);
     setPhase("slot");

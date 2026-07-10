@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 
+from app.api.attribution import attribution_to_dict, extract_attribution
 from app.api.billing import gate_themes_for_plan
 from app.api.email_guard import check_email_verified
 from app.api.users import user_is_paid
@@ -115,6 +116,7 @@ def submit_scan(
     ip = get_client_ip(request)
     key = account_key_for(request, clerk_id)
     quota = check_quota(key, engine, clerk_id, request=request)
+    attr = attribution_to_dict(extract_attribution(request, body.attribution))
 
     scan_id = str(uuid.uuid4())
     store.create(scan_id, body.query)
@@ -127,6 +129,7 @@ def submit_scan(
         ip=ip,
         account_key=key,
         clerk_id=clerk_id,
+        attribution=attr,
     )
 
     increment_quota(key, engine)

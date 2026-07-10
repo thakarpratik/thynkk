@@ -1,3 +1,4 @@
+import { getAttribution } from "../../_lib/attribution";
 import type { GrowthReport, GrowthThread, PostIdea, SubredditHint, Theme } from "../_types";
 
 /** Same-origin proxy in the browser — works even if NEXT_PUBLIC_API_URL was missing at build time. */
@@ -137,7 +138,7 @@ export async function submitScan(query: string, getToken: TokenGetter): Promise<
       "Content-Type": "application/json",
       ...(await authHeaders(getToken)),
     },
-    body: JSON.stringify({ query, post_limit: 100 }),
+    body: JSON.stringify({ query, post_limit: 100, attribution: getAttribution() }),
   });
   if (res.status === 429) {
     const detail = await res.json().catch(() => ({}));
@@ -348,7 +349,7 @@ export async function submitGrowthScan(url: string, getToken: TokenGetter): Prom
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, attribution: getAttribution() }),
   });
   if (!res.ok) await parseApiError(res, `Request failed (${res.status})`);
   const data = await res.json();
@@ -359,6 +360,25 @@ export async function pollGrowthStatus(scanId: string): Promise<GrowthStatusResp
   const res = await fetch(`${BASE}/growth-scans/${scanId}/status`);
   if (!res.ok) throw new Error(`Failed to poll status: ${res.status}`);
   return res.json();
+}
+
+export interface GrowthScanHistoryItemApi {
+  scan_id: string;
+  url: string;
+  product_name: string;
+  tier: "free" | "full";
+  total_threads: number;
+  from_cache: boolean;
+  scanned_at: string;
+}
+
+export async function fetchGrowthScanHistory(getToken: TokenGetter): Promise<GrowthScanHistoryItemApi[]> {
+  const res = await fetch(`${BASE}/growth-scans/history`, {
+    headers: await authHeaders(getToken),
+  });
+  if (!res.ok) throw new Error(`Failed to fetch scan history: ${res.status}`);
+  const data = await res.json();
+  return (data.scans ?? []) as GrowthScanHistoryItemApi[];
 }
 
 export async function fetchGrowthReport(scanId: string, getToken: TokenGetter): Promise<GrowthReport & { scanId: string; url: string }> {

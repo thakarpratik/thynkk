@@ -8,6 +8,7 @@ import {
   submitGrowthScan,
   pollGrowthStatus,
   fetchGrowthReport,
+  fetchGrowthScanHistory,
   fetchQuota,
   fetchBillingStatus,
   capturePayPalOrder,
@@ -26,6 +27,10 @@ import { ThreadCard } from "./_components/ThreadCard";
 import { PostIdeaCard } from "./_components/PostIdeaCard";
 import { UpgradeStrip } from "./_components/UpgradeStrip";
 import { UpgradeModal } from "./_components/UpgradeModal";
+import {
+  GrowthScanHistory,
+  type GrowthScanHistoryEntry,
+} from "./_components/GrowthScanHistory";
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -54,6 +59,8 @@ export default function Dashboard() {
   const [errorMessage, setErrorMessage] = useState("");
   const [scanTime, setScanTime] = useState<Date | null>(null);
   const [quota, setQuota] = useState<Awaited<ReturnType<typeof fetchQuota>> | null>(null);
+  const [scanHistory, setScanHistory] = useState<GrowthScanHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoScanStarted = useRef(false);
@@ -64,6 +71,32 @@ export default function Dashboard() {
     setUpgradeError("");
     setUpgradeOpen(true);
   }, []);
+
+  const refreshHistory = useCallback(async () => {
+    if (!isSignedIn) {
+      setScanHistory([]);
+      return;
+    }
+    setHistoryLoading(true);
+    try {
+      const rows = await fetchGrowthScanHistory(getToken);
+      setScanHistory(
+        rows.map((row) => ({
+          scanId: row.scan_id,
+          url: row.url,
+          productName: row.product_name,
+          tier: row.tier,
+          totalThreads: row.total_threads,
+          fromCache: row.from_cache,
+          scannedAt: row.scanned_at,
+        })),
+      );
+    } catch {
+      setScanHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [getToken, isSignedIn]);
 
   const refreshAccount = useCallback(async () => {
     try {
@@ -79,8 +112,11 @@ export default function Dashboard() {
   }, [getToken]);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) refreshAccount();
-  }, [isLoaded, isSignedIn, refreshAccount]);
+    if (isLoaded && isSignedIn) {
+      refreshAccount();
+      refreshHistory();
+    }
+  }, [isLoaded, isSignedIn, refreshAccount, refreshHistory]);
 
   useEffect(() => {
     if (searchParams.get("upgrade") === "true") openUpgrade();
@@ -105,6 +141,7 @@ export default function Dashboard() {
           setScanTime(new Date());
           setStatus("done");
           refreshAccount();
+          refreshHistory();
         } else if (s.status === "failed") {
           setErrorMessage(s.error ?? "Scan failed. Try a different URL.");
           setStatus("error");
@@ -117,7 +154,7 @@ export default function Dashboard() {
         setStatus("error");
       }
     }, POLL_INTERVAL_MS);
-  }, [getToken, refreshAccount]);
+  }, [getToken, refreshAccount, refreshHistory]);
 
   const beginScan = async (targetUrl: string) => {
     if (!isLoaded) return;
@@ -152,6 +189,25 @@ export default function Dashboard() {
   const handleScan = () => {
     if (!url.trim()) return;
     beginScan(url.trim());
+  };
+
+  const handleRestoreScan = async (entry: GrowthScanHistoryEntry) => {
+    stopPolling();
+    setErrorMessage("");
+    setScannedUrl(entry.url);
+    setUrl(entry.url);
+    setStatus("loading");
+
+    try {
+      const data = await fetchGrowthReport(entry.scanId, getToken);
+      setReport(data);
+      setScanTime(new Date(entry.scannedAt));
+      setStatus("done");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e: unknown) {
+      setErrorMessage(formatScanError(e));
+      setStatus("error");
+    }
   };
 
   const handleNewScan = () => {
@@ -210,6 +266,16 @@ export default function Dashboard() {
           onScan={handleScan}
           onUpgrade={openUpgrade}
         />
+
+        {isSignedIn && (
+          <div className="mt-6 mb-8">
+            <GrowthScanHistory
+              history={scanHistory}
+              loading={historyLoading}
+              onRestore={handleRestoreScan}
+            />
+          </div>
+        )}
 
         {status === "loading" && <GrowthScanningState />}
 
