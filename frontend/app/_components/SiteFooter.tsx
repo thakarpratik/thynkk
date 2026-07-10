@@ -25,6 +25,7 @@ export function SiteFooter() {
             <p className="text-xs font-mono text-[#94A3B8] uppercase tracking-widest mb-3">Product</p>
             <ul className="space-y-2 text-sm text-[#475569]">
               <li><Link href="/dashboard" className="hover:text-[#94A3B8] transition-colors">Growth Scanner</Link></li>
+              <li><Link href="/why-reddit-works" className="hover:text-[#94A3B8] transition-colors">Why Reddit Works?</Link></li>
               <li><Link href="/pricing" className="hover:text-[#94A3B8] transition-colors">Pricing</Link></li>
               <li><Link href="/case-studies" className="hover:text-[#94A3B8] transition-colors">Case studies</Link></li>
               <li><Link href="/methodology" className="hover:text-[#94A3B8] transition-colors">Methodology</Link></li>
