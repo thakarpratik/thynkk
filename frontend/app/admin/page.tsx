@@ -95,7 +95,7 @@ export default function AdminPage() {
       <div className="min-h-dvh bg-[#020617] text-[#F8FAFC] flex items-center justify-center">
         <div className="w-full max-w-sm">
           <div className="flex items-center gap-2 mb-6">
-            <BrandLogo href="" className="h-10 w-auto" />
+            <BrandLogo href="" className="h-8 w-auto" />
             <span className="font-mono font-bold text-lg text-[#94A3B8]">admin</span>
           </div>
           <input
@@ -129,7 +129,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-2">
-              <BrandLogo href="" className="h-10 w-auto" />
+              <BrandLogo href="" className="h-8 w-auto" />
               <span className="font-mono font-bold text-xl text-[#94A3B8]">admin</span>
             </div>
             <p className="text-xs text-[#475569] mt-0.5 font-mono">Auto-refreshes every 30s</p>

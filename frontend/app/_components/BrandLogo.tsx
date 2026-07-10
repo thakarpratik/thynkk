@@ -8,7 +8,7 @@ interface BrandLogoProps {
 }
 
 /** Wordmark is wide (~4:1). Default height matches old text-xl nav treatment. */
-export function BrandLogo({ href = "/", className = "h-11 w-auto sm:h-12", priority = false }: BrandLogoProps) {
+export function BrandLogo({ href = "/", className = "h-9 w-auto sm:h-10", priority = false }: BrandLogoProps) {
   const image = (
     <Image
       src="/thynkk-logo.png"
@@ -16,7 +16,7 @@ export function BrandLogo({ href = "/", className = "h-11 w-auto sm:h-12", prior
       width={216}
       height={56}
       className={className}
-      sizes="(max-width: 640px) 190px, 216px"
+      sizes="(max-width: 640px) 152px, 173px"
       priority={priority}
     />
   );

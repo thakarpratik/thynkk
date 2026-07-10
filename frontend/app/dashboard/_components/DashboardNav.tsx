@@ -23,7 +23,7 @@ export function DashboardNav({ scanCredits, quota, onUpgrade }: DashboardNavProp
   return (
     <nav className="fixed top-0 w-full z-50 border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-        <BrandLogo className="h-10 w-auto sm:h-11" />
+        <BrandLogo className="h-8 w-auto sm:h-9" />
 
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {quotaLabel && (
