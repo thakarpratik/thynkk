@@ -7,7 +7,7 @@ export function SiteFooter() {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
           <div>
-            <BrandLogo className="h-6 w-auto" />
+            <BrandLogo className="h-9 w-auto" />
             <p className="text-xs text-[#475569] mt-2 leading-relaxed">
               Skip hours of Reddit scanning. Find threads, draft replies, get real traffic.
             </p>

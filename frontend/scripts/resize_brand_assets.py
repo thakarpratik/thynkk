@@ -10,6 +10,23 @@ SRC = Path(r"C:\Users\thaka\Downloads\thynkk-web\public")
 icon_src = Image.open(SRC / "thynkkicon.png").convert("RGBA")
 logo_src = Image.open(SRC / "ThynkkLogo.png").convert("RGBA")
 
+
+def crop_to_content(img: Image.Image, pad: int = 16) -> Image.Image:
+    """Trim empty margins so the wordmark fills the asset."""
+    luminance = img.convert("L")
+    bbox = luminance.point(lambda p: 255 if p > 24 else 0).getbbox()
+    if not bbox:
+        return img
+    x0, y0, x1, y1 = bbox
+    x0 = max(0, x0 - pad)
+    y0 = max(0, y0 - pad)
+    x1 = min(img.width, x1 + pad)
+    y1 = min(img.height, y1 + pad)
+    return img.crop((x0, y0, x1, y1))
+
+
+logo_src = crop_to_content(logo_src)
+
 PUBLIC.mkdir(parents=True, exist_ok=True)
 
 ICON_SIZES = [16, 32, 48, 180, 192, 512]
@@ -42,8 +59,8 @@ def resize_logo(height: int, name: str) -> tuple[int, int]:
     return width, height
 
 
-logo_w, logo_h = resize_logo(40, "thynkk-logo.png")
-resize_logo(80, "thynkk-logo@2x.png")
+logo_w, logo_h = resize_logo(56, "thynkk-logo.png")
+resize_logo(112, "thynkk-logo@2x.png")
 logo_src.resize(
     (logo_src.width // 2, logo_src.height // 2),
     Image.Resampling.LANCZOS,
