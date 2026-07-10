@@ -376,6 +376,71 @@ def _resolve_date_range(
     return now - delta, now, key
 
 
+def _parse_csv_env(name: str) -> list[str]:
+    raw = os.environ.get(name, "") or ""
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+def _admin_exclusions(conn) -> dict[str, list[str]]:
+    """Owner/test accounts to hide from admin metrics.
+
+    Configure via env (comma-separated):
+      ADMIN_EXCLUDE_EMAILS=you@example.com,alt@example.com
+      ADMIN_EXCLUDE_CLERK_IDS=user_xxx,user_yyy
+    Also auto-excludes *@thynkk.co staff addresses when present in users.
+    """
+    emails = {e.lower() for e in _parse_csv_env("ADMIN_EXCLUDE_EMAILS")}
+    clerk_ids = set(_parse_csv_env("ADMIN_EXCLUDE_CLERK_IDS"))
+
+    try:
+        # Staff domain + any env-listed emails → resolve clerk ids
+        if emails:
+            rows = conn.execute(text("""
+                SELECT clerk_id, LOWER(email)
+                FROM users
+                WHERE deleted_at IS NULL
+                  AND (
+                        LOWER(email) = ANY(:emails)
+                     OR LOWER(email) LIKE '%@thynkk.co'
+                  )
+            """), {"emails": list(emails)}).fetchall()
+        else:
+            rows = conn.execute(text("""
+                SELECT clerk_id, LOWER(email)
+                FROM users
+                WHERE deleted_at IS NULL
+                  AND LOWER(email) LIKE '%@thynkk.co'
+            """)).fetchall()
+        for clerk_id, email in rows:
+            if clerk_id:
+                clerk_ids.add(clerk_id)
+            if email:
+                emails.add(email)
+    except Exception:
+        _recover(conn)
+
+    # If env listed clerk ids without emails, keep them
+    account_keys = [f"clerk:{cid}" for cid in clerk_ids if cid]
+    return {
+        "emails": sorted(emails),
+        "clerk_ids": sorted(clerk_ids),
+        "account_keys": sorted(account_keys),
+    }
+
+
+def _sql_not_in(column: str, values: list[str], prefix: str) -> tuple[str, dict[str, Any]]:
+    """Build `column NOT IN (...)` with bound params. Empty values → always-true."""
+    if not values:
+        return "TRUE", {}
+    placeholders: list[str] = []
+    params: dict[str, Any] = {}
+    for i, val in enumerate(values):
+        key = f"{prefix}_{i}"
+        placeholders.append(f":{key}")
+        params[key] = val
+    return f"{column} NOT IN ({', '.join(placeholders)})", params
+
+
 def _scan_where(
     *,
     start: datetime | None,
@@ -387,6 +452,7 @@ def _scan_where(
     browser: str | None,
     os_name: str | None,
     scan_type: str | None,
+    exclude_clerk_ids: list[str] | None = None,
     alias: str = "",
 ) -> tuple[str, dict[str, Any]]:
     col = f"{alias}." if alias else ""
@@ -420,6 +486,11 @@ def _scan_where(
     if scan_type:
         clauses.append(f"LOWER({col}scan_type) = LOWER(:f_scan_type)")
         params["f_scan_type"] = scan_type
+    if exclude_clerk_ids:
+        # Keep anonymous/ip scans; drop owner-linked ones
+        excl_sql, excl_params = _sql_not_in(f"{col}clerk_id", exclude_clerk_ids, "ex_clerk")
+        clauses.append(f"({col}clerk_id IS NULL OR {excl_sql})")
+        params.update(excl_params)
 
     return " AND ".join(clauses), params
 
@@ -554,37 +625,88 @@ def admin_stats(
     os_f = (os or "").strip() or None
     scan_type_f = (scan_type or "").strip() or None
 
-    where_sql, where_params = _scan_where(
-        start=start,
-        end=end,
-        source=source_f,
-        referral=referral_f,
-        country=country_f,
-        device=device_f,
-        browser=browser_f,
-        os_name=os_f,
-        scan_type=scan_type_f,
-    )
-
     with engine.connect() as conn:
-        # Lifetime counters (unfiltered — for overview cards)
-        total_scans = _safe_scalar(conn, "SELECT COUNT(*) FROM scan_log")
+        excl = _admin_exclusions(conn)
+        excl_emails = excl["emails"]
+        excl_clerks = excl["clerk_ids"]
+        excl_keys = excl["account_keys"]
+
+        user_excl_sql, user_excl_params = _sql_not_in("LOWER(email)", excl_emails, "ex_email")
+        clerk_excl_sql, clerk_excl_params = _sql_not_in("clerk_id", excl_clerks, "ex_uid")
+        # Combine: exclude if email OR clerk_id matches owner list
+        if excl_emails or excl_clerks:
+            user_not_owner = f"({user_excl_sql if excl_emails else 'TRUE'}) AND ({clerk_excl_sql if excl_clerks else 'TRUE'})"
+            user_not_owner_params = {**user_excl_params, **clerk_excl_params}
+        else:
+            user_not_owner = "TRUE"
+            user_not_owner_params = {}
+
+        key_excl_sql, key_excl_params = _sql_not_in("account_key", excl_keys, "ex_key")
+
+        where_sql, where_params = _scan_where(
+            start=start,
+            end=end,
+            source=source_f,
+            referral=referral_f,
+            country=country_f,
+            device=device_f,
+            browser=browser_f,
+            os_name=os_f,
+            scan_type=scan_type_f,
+            exclude_clerk_ids=excl_clerks,
+        )
+
+        # Lifetime scan counters (owner activity excluded)
+        life_sql, life_params = _scan_where(exclude_clerk_ids=excl_clerks,
+            start=None, end=None, source=None, referral=None, country=None,
+            device=None, browser=None, os_name=None, scan_type=None)
+        total_scans = _safe_scalar(
+            conn, f"SELECT COUNT(*) FROM scan_log WHERE {life_sql}", life_params,
+        )
+        today_sql, today_params = _scan_where(
+            start=today_start, end=None, source=None, referral=None, country=None,
+            device=None, browser=None, os_name=None, scan_type=None,
+            exclude_clerk_ids=excl_clerks,
+        )
         scans_today = _safe_scalar(
-            conn, "SELECT COUNT(*) FROM scan_log WHERE created_at >= :d", {"d": today_start},
+            conn, f"SELECT COUNT(*) FROM scan_log WHERE {today_sql}", today_params,
+        )
+        week_sql, week_params = _scan_where(
+            start=week_start, end=None, source=None, referral=None, country=None,
+            device=None, browser=None, os_name=None, scan_type=None,
+            exclude_clerk_ids=excl_clerks,
         )
         scans_week = _safe_scalar(
-            conn, "SELECT COUNT(*) FROM scan_log WHERE created_at >= :d", {"d": week_start},
+            conn, f"SELECT COUNT(*) FROM scan_log WHERE {week_sql}", week_params,
+        )
+        growth_sql, growth_params = _scan_where(
+            start=None, end=None, source=None, referral=None, country=None,
+            device=None, browser=None, os_name=None, scan_type="growth",
+            exclude_clerk_ids=excl_clerks,
         )
         growth_scans = _safe_scalar(
-            conn, "SELECT COUNT(*) FROM scan_log WHERE scan_type = 'growth'",
+            conn, f"SELECT COUNT(*) FROM scan_log WHERE {growth_sql}", growth_params,
+        )
+        pain_sql, pain_params = _scan_where(
+            start=None, end=None, source=None, referral=None, country=None,
+            device=None, browser=None, os_name=None, scan_type="pain",
+            exclude_clerk_ids=excl_clerks,
         )
         pain_scans = _safe_scalar(
-            conn, "SELECT COUNT(*) FROM scan_log WHERE scan_type = 'pain'",
+            conn, f"SELECT COUNT(*) FROM scan_log WHERE {pain_sql}", pain_params,
         )
 
-        cache_hits = _safe_scalar(conn, "SELECT COUNT(*) FROM scan_log WHERE from_cache = TRUE")
+        cache_hits = _safe_scalar(
+            conn,
+            f"SELECT COUNT(*) FROM scan_log WHERE {life_sql} AND from_cache = TRUE",
+            life_params,
+        )
         cache_hit_rate = int(cache_hits * 100 / total_scans) if total_scans else 0
-        unique_ips = _safe_scalar(conn, "SELECT COUNT(DISTINCT ip) FROM scan_log")
+        unique_ips = _safe_scalar(
+            conn,
+            f"SELECT COUNT(DISTINCT ip) FROM scan_log WHERE {life_sql}",
+            life_params,
+        )
 
         # Filtered scan metrics
         filtered_scans = _safe_scalar(
@@ -598,33 +720,46 @@ def admin_stats(
         filtered_signups = 0
         try:
             total_users = _safe_scalar(
-                conn, "SELECT COUNT(*) FROM users WHERE deleted_at IS NULL",
+                conn,
+                f"SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND {user_not_owner}",
+                user_not_owner_params,
             )
             signups_today = _safe_scalar(
                 conn,
-                "SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND created_at >= :d",
-                {"d": today_start},
+                f"""
+                SELECT COUNT(*) FROM users
+                WHERE deleted_at IS NULL AND created_at >= :d AND {user_not_owner}
+                """,
+                {**user_not_owner_params, "d": today_start},
             )
             signups_week = _safe_scalar(
                 conn,
-                "SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND created_at >= :d",
-                {"d": week_start},
+                f"""
+                SELECT COUNT(*) FROM users
+                WHERE deleted_at IS NULL AND created_at >= :d AND {user_not_owner}
+                """,
+                {**user_not_owner_params, "d": week_start},
             )
             users_with_scans = _safe_scalar(
                 conn,
-                """
+                f"""
                 SELECT COUNT(DISTINCT account_key) FROM growth_user_scans
-                WHERE account_key LIKE 'clerk:%'
+                WHERE account_key LIKE 'clerk:%' AND {key_excl_sql}
                 """,
+                key_excl_params,
             )
             free_scans_used = _safe_scalar(
-                conn, "SELECT COUNT(*) FROM scan_quotas WHERE free_scan_used = TRUE",
+                conn,
+                f"SELECT COUNT(*) FROM scan_quotas WHERE free_scan_used = TRUE AND {key_excl_sql}",
+                key_excl_params,
             )
             users_with_credits = _safe_scalar(
-                conn, "SELECT COUNT(*) FROM scan_quotas WHERE scan_credits > 0",
+                conn,
+                f"SELECT COUNT(*) FROM scan_quotas WHERE scan_credits > 0 AND {key_excl_sql}",
+                key_excl_params,
             )
-            signup_clauses = ["deleted_at IS NULL"]
-            signup_params: dict[str, Any] = {}
+            signup_clauses = [f"deleted_at IS NULL AND {user_not_owner}"]
+            signup_params: dict[str, Any] = {**user_not_owner_params}
             if start is not None:
                 signup_clauses.append("created_at >= :s_start")
                 signup_params["s_start"] = start
@@ -643,15 +778,26 @@ def admin_stats(
         filtered_purchases = 0
         filtered_revenue = 0.0
         try:
-            pack_purchases = _safe_scalar(conn, "SELECT COUNT(*) FROM paypal_orders")
-            if pack_purchases or _table_exists(conn, "paypal_orders"):
-                rev_row = conn.execute(text("""
-                    SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) FROM paypal_orders
-                """)).fetchone()
+            if _table_exists(conn, "paypal_orders"):
+                pay_excl_sql, pay_excl_params = _sql_not_in(
+                    "clerk_id", excl_clerks, "px_uid",
+                )
+                pay_owner = (
+                    f"(clerk_id IS NULL OR {pay_excl_sql})" if excl_clerks else "TRUE"
+                )
+                pack_purchases = _safe_scalar(
+                    conn,
+                    f"SELECT COUNT(*) FROM paypal_orders WHERE {pay_owner}",
+                    pay_excl_params,
+                )
+                rev_row = conn.execute(text(f"""
+                    SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0)
+                    FROM paypal_orders WHERE {pay_owner}
+                """), pay_excl_params).fetchone()
                 pack_revenue = float(rev_row[0]) if rev_row else 0.0
 
-                purchase_clauses = ["1=1"]
-                purchase_params: dict[str, Any] = {}
+                purchase_clauses = [pay_owner]
+                purchase_params: dict[str, Any] = {**pay_excl_params}
                 if start is not None:
                     purchase_clauses.append("created_at >= :p_start")
                     purchase_params["p_start"] = start
@@ -675,9 +821,17 @@ def admin_stats(
         waitlist_total = 0
         waitlist_sources: list[SourceCount] = []
         try:
-            waitlist_total = _safe_scalar(conn, "SELECT COUNT(*) FROM waitlist")
-            wl_clauses = ["1=1"]
-            wl_params: dict[str, Any] = {}
+            wl_email_sql, wl_email_params = _sql_not_in(
+                "LOWER(email)", excl_emails, "wl_email",
+            )
+            wl_owner = wl_email_sql if excl_emails else "TRUE"
+            waitlist_total = _safe_scalar(
+                conn,
+                f"SELECT COUNT(*) FROM waitlist WHERE {wl_owner}",
+                wl_email_params,
+            )
+            wl_clauses = [wl_owner]
+            wl_params: dict[str, Any] = {**wl_email_params}
             if start is not None:
                 wl_clauses.append("created_at >= :w_start")
                 wl_params["w_start"] = start
@@ -769,6 +923,7 @@ def admin_stats(
                 browser=browser_f,
                 os_name=os_f,
                 scan_type=scan_type_f,
+                exclude_clerk_ids=excl_clerks,
             )
             series_params = {
                 **series_where_params,
@@ -786,13 +941,18 @@ def admin_stats(
 
             signup_by_day: dict[str, int] = {}
             try:
-                su_rows = conn.execute(text("""
+                su_rows = conn.execute(text(f"""
                     SELECT DATE(created_at AT TIME ZONE 'UTC') AS d, COUNT(*)
                     FROM users
                     WHERE deleted_at IS NULL
                       AND created_at >= :series_start AND created_at <= :series_end
+                      AND {user_not_owner}
                     GROUP BY 1
-                """), {"series_start": series_start, "series_end": day_end}).fetchall()
+                """), {
+                    **user_not_owner_params,
+                    "series_start": series_start,
+                    "series_end": day_end,
+                }).fetchall()
                 signup_by_day = {str(r[0]): int(r[1]) for r in su_rows}
             except Exception:
                 _recover(conn)
@@ -800,12 +960,23 @@ def admin_stats(
             purchase_by_day: dict[str, int] = {}
             try:
                 if _table_exists(conn, "paypal_orders"):
-                    pu_rows = conn.execute(text("""
+                    pay_clerk_sql, pay_clerk_params = _sql_not_in(
+                        "clerk_id", excl_clerks, "ex_pay",
+                    )
+                    pay_owner = (
+                        f"(clerk_id IS NULL OR {pay_clerk_sql})" if excl_clerks else "TRUE"
+                    )
+                    pu_rows = conn.execute(text(f"""
                         SELECT DATE(created_at AT TIME ZONE 'UTC') AS d, COUNT(*)
                         FROM paypal_orders
                         WHERE created_at >= :series_start AND created_at <= :series_end
+                          AND {pay_owner}
                         GROUP BY 1
-                    """), {"series_start": series_start, "series_end": day_end}).fetchall()
+                    """), {
+                        **pay_clerk_params,
+                        "series_start": series_start,
+                        "series_end": day_end,
+                    }).fetchall()
                     purchase_by_day = {str(r[0]): int(r[1]) for r in pu_rows}
             except Exception:
                 _recover(conn)
@@ -834,7 +1005,20 @@ def admin_stats(
 
         recent_users: list[UserRow] = []
         try:
-            user_rows = conn.execute(text("""
+            # Re-bind user exclusion with u. prefix
+            u_email_sql, u_email_params = _sql_not_in("LOWER(u.email)", excl_emails, "ru_email")
+            u_clerk_sql, u_clerk_params = _sql_not_in("u.clerk_id", excl_clerks, "ru_uid")
+            if excl_emails or excl_clerks:
+                ru_not_owner = (
+                    f"({u_email_sql if excl_emails else 'TRUE'}) "
+                    f"AND ({u_clerk_sql if excl_clerks else 'TRUE'})"
+                )
+                ru_params = {**u_email_params, **u_clerk_params}
+            else:
+                ru_not_owner = "TRUE"
+                ru_params = {}
+
+            user_rows = conn.execute(text(f"""
                 SELECT
                     u.email,
                     u.clerk_id,
@@ -850,10 +1034,10 @@ def admin_stats(
                     )
                 FROM users u
                 LEFT JOIN scan_quotas q ON q.account_key = 'clerk:' || u.clerk_id
-                WHERE u.deleted_at IS NULL
+                WHERE u.deleted_at IS NULL AND {ru_not_owner}
                 ORDER BY u.created_at DESC
                 LIMIT 15
-            """)).fetchall()
+            """), ru_params).fetchall()
             recent_users = [
                 UserRow(
                     email=_mask_email(r[0]),
@@ -872,10 +1056,18 @@ def admin_stats(
         recent_purchases: list[PurchaseRow] = []
         try:
             if _table_exists(conn, "paypal_orders"):
-                purchase_rows = conn.execute(text("""
+                rp_clerk_sql, rp_clerk_params = _sql_not_in(
+                    "clerk_id", excl_clerks, "rp_uid",
+                )
+                rp_owner = (
+                    f"(clerk_id IS NULL OR {rp_clerk_sql})" if excl_clerks else "TRUE"
+                )
+                purchase_rows = conn.execute(text(f"""
                     SELECT order_id, clerk_id, amount, currency, credits_granted, created_at
-                    FROM paypal_orders ORDER BY created_at DESC LIMIT 10
-                """)).fetchall()
+                    FROM paypal_orders
+                    WHERE {rp_owner}
+                    ORDER BY created_at DESC LIMIT 10
+                """), rp_clerk_params).fetchall()
                 recent_purchases = [
                     PurchaseRow(
                         order_id=r[0],
@@ -892,9 +1084,10 @@ def admin_stats(
 
         email_by_clerk: dict[str, str] = {}
         try:
-            email_rows = conn.execute(text(
-                "SELECT clerk_id, email FROM users WHERE deleted_at IS NULL"
-            )).fetchall()
+            email_rows = conn.execute(text(f"""
+                SELECT clerk_id, email FROM users
+                WHERE deleted_at IS NULL AND {user_not_owner}
+            """), user_not_owner_params).fetchall()
             email_by_clerk = {r[0]: _mask_email(r[1]) for r in email_rows}
         except Exception:
             _recover(conn)
