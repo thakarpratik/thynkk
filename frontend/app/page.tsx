@@ -9,12 +9,12 @@ import { WaitlistForm } from "./_components/WaitlistForm";
 import { PACK_FEATURE_LIST, PACK_NAME, PACK_PRICE_USD } from "./_lib/pricing";
 
 export const metadata: Metadata = {
-  title: "Thynkk — Reddit Traffic Without the Hours of Grinding",
-  description: "Stop spending hours scanning Reddit, hunting threads, and writing replies. Thynkk finds the conversations, drafts your responses, and helps you get real targeted traffic — the organic way.",
+  title: "Thynkk — Find Reddit Threads Worth Joining",
+  description: "Paste your website. Thynkk finds live Reddit discussions where your product fits, ranks them, and drafts replies you can paste today — without scrolling for hours.",
   alternates: { canonical: "https://thynkk.co" },
   openGraph: {
-    title: "Thynkk — Reddit Traffic Without the Hours of Grinding",
-    description: "Hours of Reddit scanning → one-minute scan. Find threads, copy reply drafts, get targeted organic traffic. Reddit is the real deal.",
+    title: "Thynkk — Find Reddit Threads Worth Joining",
+    description: "Your audience is already on Reddit. Paste your URL, get ranked threads + copy-ready reply drafts in about 60 seconds.",
     url: "https://thynkk.co",
   },
 };
@@ -27,16 +27,16 @@ export default function LandingPage() {
       <section className="pt-40 pb-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <LiveActivity />
-          <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">Invite-only beta · Rolling access</p>
+          <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">Paste your URL · Reddit growth</p>
           <h1 className="font-mono text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Hours of scanning.<br />
-            <span className="text-gradient">Done in 60 seconds.</span>
+            Your audience is on Reddit.<br />
+            <span className="text-gradient">We find where to show up.</span>
           </h1>
           <p className="text-xl text-[#94A3B8] max-w-2xl mx-auto mb-4 leading-relaxed">
-            You know Reddit works — but finding the right threads, writing replies, and showing up consistently eats <span className="text-[#F8FAFC]">hours every week</span>. Thynkk does the grind for you.
+            Paste your site. Thynkk finds live discussions where your product actually fits, ranks them, and drafts replies you can paste today — <span className="text-[#F8FAFC]">without scrolling for hours</span>.
           </p>
           <p className="text-base text-[#64748B] max-w-xl mx-auto mb-10 leading-relaxed">
-            Request access with your email. We find the threads, draft the replies, and save you hours every week.
+            Join the waitlist. Your first scan is free — see real threads and reply drafts for your product in about 60 seconds.
           </p>
           <HeroCTA />
         </div>
