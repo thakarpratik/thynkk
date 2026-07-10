@@ -293,10 +293,37 @@ def log_scan(
         })
 
 
+def _recover(conn) -> None:
+    """Clear aborted Postgres transaction so later queries can run."""
+    try:
+        conn.rollback()
+    except Exception:
+        pass
+
+
+def _table_exists(conn, table: str) -> bool:
+    try:
+        row = conn.execute(
+            text("""
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = :t
+                LIMIT 1
+            """),
+            {"t": table},
+        ).fetchone()
+        return row is not None
+    except Exception:
+        _recover(conn)
+        return False
+
+
 def _safe_scalar(conn, sql: str, params: dict | None = None, default: int = 0) -> int:
     try:
         return int(conn.execute(text(sql), params or {}).scalar() or default)
     except Exception:
+        # Without rollback, PostgreSQL leaves the connection in failed-tx state
+        # and every subsequent query raises InFailedSqlTransaction (HTTP 500).
+        _recover(conn)
         return default
 
 
@@ -402,6 +429,7 @@ def _named_counts(conn, sql: str, params: dict[str, Any], limit: int = 15) -> li
         rows = conn.execute(text(sql), params).fetchall()
         return [NamedCount(name=str(r[0] or "unknown"), count=int(r[1])) for r in rows[:limit]]
     except Exception:
+        _recover(conn)
         return []
 
 
@@ -424,6 +452,7 @@ def _distinct_values(conn, column: str, start: datetime | None, end: datetime | 
         """), params).fetchall()
         return [str(r[0]) for r in rows]
     except Exception:
+        _recover(conn)
         return []
 
 
@@ -608,39 +637,40 @@ def admin_stats(
                 signup_params,
             )
         except Exception:
-            pass
+            _recover(conn)
 
         pack_purchases = pack_revenue = 0.0
         filtered_purchases = 0
         filtered_revenue = 0.0
         try:
             pack_purchases = _safe_scalar(conn, "SELECT COUNT(*) FROM paypal_orders")
-            rev_row = conn.execute(text("""
-                SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) FROM paypal_orders
-            """)).fetchone()
-            pack_revenue = float(rev_row[0]) if rev_row else 0.0
+            if pack_purchases or _table_exists(conn, "paypal_orders"):
+                rev_row = conn.execute(text("""
+                    SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) FROM paypal_orders
+                """)).fetchone()
+                pack_revenue = float(rev_row[0]) if rev_row else 0.0
 
-            purchase_clauses = ["1=1"]
-            purchase_params: dict[str, Any] = {}
-            if start is not None:
-                purchase_clauses.append("created_at >= :p_start")
-                purchase_params["p_start"] = start
-            if end is not None:
-                purchase_clauses.append("created_at <= :p_end")
-                purchase_params["p_end"] = end
-            purchase_where = " AND ".join(purchase_clauses)
-            filtered_purchases = _safe_scalar(
-                conn,
-                f"SELECT COUNT(*) FROM paypal_orders WHERE {purchase_where}",
-                purchase_params,
-            )
-            frev = conn.execute(text(f"""
-                SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0)
-                FROM paypal_orders WHERE {purchase_where}
-            """), purchase_params).fetchone()
-            filtered_revenue = float(frev[0]) if frev else 0.0
+                purchase_clauses = ["1=1"]
+                purchase_params: dict[str, Any] = {}
+                if start is not None:
+                    purchase_clauses.append("created_at >= :p_start")
+                    purchase_params["p_start"] = start
+                if end is not None:
+                    purchase_clauses.append("created_at <= :p_end")
+                    purchase_params["p_end"] = end
+                purchase_where = " AND ".join(purchase_clauses)
+                filtered_purchases = _safe_scalar(
+                    conn,
+                    f"SELECT COUNT(*) FROM paypal_orders WHERE {purchase_where}",
+                    purchase_params,
+                )
+                frev = conn.execute(text(f"""
+                    SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0)
+                    FROM paypal_orders WHERE {purchase_where}
+                """), purchase_params).fetchone()
+                filtered_revenue = float(frev[0]) if frev else 0.0
         except Exception:
-            pass
+            _recover(conn)
 
         waitlist_total = 0
         waitlist_sources: list[SourceCount] = []
@@ -662,14 +692,18 @@ def admin_stats(
             """), wl_params).fetchall()
             waitlist_sources = [SourceCount(source=r[0], count=r[1]) for r in wl_rows]
         except Exception:
-            pass
+            _recover(conn)
 
-        top_url_rows = conn.execute(text(f"""
-            SELECT query, COUNT(*) AS cnt FROM scan_log
-            WHERE {where_sql} AND scan_type = 'growth'
-            GROUP BY query ORDER BY cnt DESC LIMIT 10
-        """), where_params).fetchall()
-        top_urls = [UrlCount(url=r[0], count=r[1]) for r in top_url_rows]
+        top_urls: list[UrlCount] = []
+        try:
+            top_url_rows = conn.execute(text(f"""
+                SELECT query, COUNT(*) AS cnt FROM scan_log
+                WHERE {where_sql} AND scan_type = 'growth'
+                GROUP BY query ORDER BY cnt DESC LIMIT 10
+            """), where_params).fetchall()
+            top_urls = [UrlCount(url=r[0], count=r[1]) for r in top_url_rows]
+        except Exception:
+            _recover(conn)
 
         tier_breakdown: dict[str, int] = {"free": 0, "full": 0, "unknown": 0}
         try:
@@ -681,7 +715,7 @@ def admin_stats(
             for tier, cnt in tier_rows:
                 tier_breakdown[str(tier)] = int(cnt)
         except Exception:
-            pass
+            _recover(conn)
 
         by_source = _named_counts(conn, f"""
             SELECT COALESCE(NULLIF(source, ''), 'direct'), COUNT(*)
@@ -761,19 +795,20 @@ def admin_stats(
                 """), {"series_start": series_start, "series_end": day_end}).fetchall()
                 signup_by_day = {str(r[0]): int(r[1]) for r in su_rows}
             except Exception:
-                pass
+                _recover(conn)
 
             purchase_by_day: dict[str, int] = {}
             try:
-                pu_rows = conn.execute(text("""
-                    SELECT DATE(created_at AT TIME ZONE 'UTC') AS d, COUNT(*)
-                    FROM paypal_orders
-                    WHERE created_at >= :series_start AND created_at <= :series_end
-                    GROUP BY 1
-                """), {"series_start": series_start, "series_end": day_end}).fetchall()
-                purchase_by_day = {str(r[0]): int(r[1]) for r in pu_rows}
+                if _table_exists(conn, "paypal_orders"):
+                    pu_rows = conn.execute(text("""
+                        SELECT DATE(created_at AT TIME ZONE 'UTC') AS d, COUNT(*)
+                        FROM paypal_orders
+                        WHERE created_at >= :series_start AND created_at <= :series_end
+                        GROUP BY 1
+                    """), {"series_start": series_start, "series_end": day_end}).fetchall()
+                    purchase_by_day = {str(r[0]): int(r[1]) for r in pu_rows}
             except Exception:
-                pass
+                _recover(conn)
 
             for i in range(span_days):
                 d = (series_start + timedelta(days=i)).date().isoformat()
@@ -784,6 +819,7 @@ def admin_stats(
                     purchases=purchase_by_day.get(d, 0),
                 ))
         except Exception:
+            _recover(conn)
             by_day = []
 
         filter_options = FilterOptions(
@@ -831,27 +867,28 @@ def admin_stats(
                 for r in user_rows
             ]
         except Exception:
-            pass
+            _recover(conn)
 
         recent_purchases: list[PurchaseRow] = []
         try:
-            purchase_rows = conn.execute(text("""
-                SELECT order_id, clerk_id, amount, currency, credits_granted, created_at
-                FROM paypal_orders ORDER BY created_at DESC LIMIT 10
-            """)).fetchall()
-            recent_purchases = [
-                PurchaseRow(
-                    order_id=r[0],
-                    clerk_id=_mask_clerk_id(r[1]),
-                    amount=r[2],
-                    currency=r[3],
-                    credits_granted=int(r[4]),
-                    created_at=r[5],
-                )
-                for r in purchase_rows
-            ]
+            if _table_exists(conn, "paypal_orders"):
+                purchase_rows = conn.execute(text("""
+                    SELECT order_id, clerk_id, amount, currency, credits_granted, created_at
+                    FROM paypal_orders ORDER BY created_at DESC LIMIT 10
+                """)).fetchall()
+                recent_purchases = [
+                    PurchaseRow(
+                        order_id=r[0],
+                        clerk_id=_mask_clerk_id(r[1]),
+                        amount=r[2],
+                        currency=r[3],
+                        credits_granted=int(r[4]),
+                        created_at=r[5],
+                    )
+                    for r in purchase_rows
+                ]
         except Exception:
-            pass
+            _recover(conn)
 
         email_by_clerk: dict[str, str] = {}
         try:
@@ -860,40 +897,79 @@ def admin_stats(
             )).fetchall()
             email_by_clerk = {r[0]: _mask_email(r[1]) for r in email_rows}
         except Exception:
-            pass
+            _recover(conn)
 
-        recent_rows = conn.execute(text(f"""
-            SELECT id, ip, query, from_cache, status, themes_count,
-                   scan_type, clerk_id, tier, created_at,
-                   referrer, source, medium, campaign, country, device, browser, os
-            FROM scan_log
-            WHERE {where_sql}
-            ORDER BY created_at DESC LIMIT 50
-        """), where_params).fetchall()
-        recent_scans = [
-            ScanLogEntry(
-                id=r[0],
-                ip=r[1],
-                query=r[2],
-                from_cache=r[3],
-                status=r[4],
-                themes_count=r[5],
-                scan_type=r[6] or "growth",
-                clerk_id=r[7],
-                tier=r[8],
-                user_email=email_by_clerk.get(r[7]) if r[7] else None,
-                created_at=r[9],
-                referrer=r[10] or "direct",
-                source=r[11] or "direct",
-                medium=r[12] or "none",
-                campaign=r[13] or "",
-                country=r[14] or "unknown",
-                device=r[15] or "unknown",
-                browser=r[16] or "unknown",
-                os=r[17] or "unknown",
-            )
-            for r in recent_rows
-        ]
+        recent_scans: list[ScanLogEntry] = []
+        try:
+            recent_rows = conn.execute(text(f"""
+                SELECT id, ip, query, from_cache, status, themes_count,
+                       scan_type, clerk_id, tier, created_at,
+                       referrer, source, medium, campaign, country, device, browser, os
+                FROM scan_log
+                WHERE {where_sql}
+                ORDER BY created_at DESC LIMIT 50
+            """), where_params).fetchall()
+            recent_scans = [
+                ScanLogEntry(
+                    id=r[0],
+                    ip=r[1],
+                    query=r[2],
+                    from_cache=r[3],
+                    status=r[4],
+                    themes_count=r[5],
+                    scan_type=r[6] or "growth",
+                    clerk_id=r[7],
+                    tier=r[8],
+                    user_email=email_by_clerk.get(r[7]) if r[7] else None,
+                    created_at=r[9],
+                    referrer=r[10] or "direct",
+                    source=r[11] or "direct",
+                    medium=r[12] or "none",
+                    campaign=r[13] or "",
+                    country=r[14] or "unknown",
+                    device=r[15] or "unknown",
+                    browser=r[16] or "unknown",
+                    os=r[17] or "unknown",
+                )
+                for r in recent_rows
+            ]
+        except Exception:
+            _recover(conn)
+            # Fallback without attribution columns (older DBs mid-migrate)
+            try:
+                recent_rows = conn.execute(text(f"""
+                    SELECT id, ip, query, from_cache, status, themes_count,
+                           scan_type, clerk_id, tier, created_at
+                    FROM scan_log
+                    WHERE {where_sql}
+                    ORDER BY created_at DESC LIMIT 50
+                """), where_params).fetchall()
+                recent_scans = [
+                    ScanLogEntry(
+                        id=r[0],
+                        ip=r[1],
+                        query=r[2],
+                        from_cache=r[3],
+                        status=r[4],
+                        themes_count=r[5],
+                        scan_type=r[6] or "growth",
+                        clerk_id=r[7],
+                        tier=r[8],
+                        user_email=email_by_clerk.get(r[7]) if r[7] else None,
+                        created_at=r[9],
+                        referrer="direct",
+                        source="direct",
+                        medium="none",
+                        campaign="",
+                        country="unknown",
+                        device="unknown",
+                        browser="unknown",
+                        os="unknown",
+                    )
+                    for r in recent_rows
+                ]
+            except Exception:
+                _recover(conn)
 
     applied = AppliedFilters(
         range=range_key,
