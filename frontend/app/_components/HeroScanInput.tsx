@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth, useClerk } from "@clerk/nextjs";
 
 function normalizeUrl(raw: string): string {
   const trimmed = raw.trim();
@@ -13,17 +14,38 @@ function normalizeUrl(raw: string): string {
 
 interface HeroScanInputProps {
   compact?: boolean;
+  buttonLabel?: string;
 }
 
-export function HeroScanInput({ compact = false }: HeroScanInputProps) {
+export function HeroScanInput({
+  compact = false,
+  buttonLabel,
+}: HeroScanInputProps) {
   const router = useRouter();
+  const { isSignedIn, isLoaded } = useAuth();
+  const { openSignUp } = useClerk();
   const [url, setUrl] = useState("");
+
+  const label =
+    buttonLabel ?? (compact ? "Start scanning" : "Start scanning");
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     const target = normalizeUrl(url);
     if (!target) return;
-    router.push(`/dashboard?url=${encodeURIComponent(target)}`);
+
+    const dashboardPath = `/dashboard?url=${encodeURIComponent(target)}`;
+
+    if (isLoaded && isSignedIn) {
+      router.push(dashboardPath);
+      return;
+    }
+
+    // Prompt Clerk signup/login, then land on dashboard with the URL ready
+    openSignUp({
+      forceRedirectUrl: dashboardPath,
+      signInForceRedirectUrl: dashboardPath,
+    });
   };
 
   return (
@@ -34,13 +56,13 @@ export function HeroScanInput({ compact = false }: HeroScanInputProps) {
           inputMode="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://yourproduct.com"
-          className="flex-1 bg-[#0E1223] border border-[#1E293B] focus:border-[#6366F1] outline-none text-[#F8FAFC] placeholder:text-[#94A3B8]/50 px-4 py-3 rounded-lg text-sm font-mono transition-colors text-left"
+          placeholder="Enter your website"
+          className="flex-1 bg-[#0E1223] border border-[#1E293B] focus:border-[#6366F1] outline-none text-[#F8FAFC] placeholder:text-[#94A3B8]/50 px-4 py-3.5 rounded-lg text-sm font-mono transition-colors text-left"
           aria-label="Your website URL"
         />
         <button
           type="submit"
-          disabled={!url.trim()}
+          disabled={!url.trim() || !isLoaded}
           className={`disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium text-sm transition-all cursor-pointer whitespace-nowrap ${
             compact
               ? "bg-[#1A1E2F] border border-[#1E293B] hover:border-[#6366F1] text-[#CBD5E1]"
@@ -48,9 +70,14 @@ export function HeroScanInput({ compact = false }: HeroScanInputProps) {
           }`}
           style={compact ? undefined : { boxShadow: "0 0 24px rgba(99,102,241,0.35)" }}
         >
-          {compact ? "Free scan" : "Scan your site for free"}
+          {label}
         </button>
       </div>
+      {!compact && (
+        <p className="text-xs text-[#64748B] mt-3 leading-relaxed">
+          Free scan included. Sign in or create an account to start — about 60 seconds.
+        </p>
+      )}
     </form>
   );
 }

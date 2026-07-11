@@ -5,7 +5,6 @@ import { SiteFooter } from "./_components/SiteFooter";
 import { PlanCTA } from "./_components/PlanCTA";
 import { LiveActivity } from "./_components/LiveActivity";
 import { HeroCTA } from "./_components/HeroCTA";
-import { WaitlistForm } from "./_components/WaitlistForm";
 import { PACK_FEATURE_LIST, PACK_NAME, PACK_PRICE_USD } from "./_lib/pricing";
 
 export const metadata: Metadata = {
@@ -36,7 +35,7 @@ export default function LandingPage() {
             Thynkk reads your site, finds the Reddit conversations worth joining, and writes what you&apos;d say — so you show up where <span className="text-[#F8FAFC]">buyers are already talking</span>.
           </p>
           <p className="text-base text-[#64748B] max-w-xl mx-auto mb-10 leading-relaxed">
-            Free scan when you&apos;re in. About 60 seconds.
+            Paste your website. Get ranked threads and reply drafts in about 60 seconds.
           </p>
           <HeroCTA />
         </div>
@@ -193,9 +192,9 @@ export default function LandingPage() {
             Reddit traffic works.<br /><span className="text-gradient">Stop grinding for it.</span>
           </h2>
           <p className="text-[#94A3B8] mb-8 max-w-lg mx-auto leading-relaxed">
-            Enter your email. If a spot opens up, you&apos;re in — then straight to your first scan.
+            Enter your website and start scanning. Sign in takes a few seconds — then you&apos;re in.
           </p>
-          <WaitlistForm source="homepage-footer" variant="footer" />
+          <HeroCTA />
         </div>
       </section>
 

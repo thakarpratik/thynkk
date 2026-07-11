@@ -1,15 +1,15 @@
 "use client";
 
-import { WaitlistForm } from "./WaitlistForm";
+import { HeroScanInput } from "./HeroScanInput";
 
 interface HeroCTAProps {
-  source?: string;
+  compact?: boolean;
 }
 
-export function HeroCTA({ source = "homepage" }: HeroCTAProps) {
+export function HeroCTA({ compact = false }: HeroCTAProps) {
   return (
-    <div className="w-full max-w-xl mx-auto">
-      <WaitlistForm source={source} variant="hero" />
+    <div className={`w-full mx-auto ${compact ? "max-w-xl" : "max-w-xl"}`}>
+      <HeroScanInput compact={compact} buttonLabel="Start scanning" />
     </div>
   );
 }

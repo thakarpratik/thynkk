@@ -173,10 +173,10 @@ export default function PricingPage() {
             Contact us
           </Link>
           <Link
-            href="/"
+            href="/dashboard"
             className="inline-block bg-[#6366F1] hover:bg-[#4F46E5] text-white px-8 py-3 rounded-lg font-medium text-sm transition-colors"
           >
-            Join waitlist
+            Start scanning
           </Link>
         </div>
 

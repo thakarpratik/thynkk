@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useClerk } from "@clerk/nextjs";
 import { fetchBillingStatus } from "../dashboard/_lib/api";
 
 interface PlanCTAProps {
@@ -10,10 +10,11 @@ interface PlanCTAProps {
 }
 
 const base =
-  "block text-center px-6 py-2.5 rounded-md font-medium text-sm transition-all";
+  "block w-full text-center px-6 py-2.5 rounded-md font-medium text-sm transition-all cursor-pointer";
 
 export function PlanCTA({ plan }: PlanCTAProps) {
   const { isSignedIn, isLoaded, getToken } = useAuth();
+  const { openSignUp } = useClerk();
   const [isPro, setIsPro] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -60,12 +61,18 @@ export function PlanCTA({ plan }: PlanCTAProps) {
   if (plan === "free") {
     if (!isSignedIn) {
       return (
-        <Link
-          href="/"
+        <button
+          type="button"
+          onClick={() =>
+            openSignUp({
+              forceRedirectUrl: "/dashboard",
+              signInForceRedirectUrl: "/dashboard",
+            })
+          }
           className={`${base} border border-[#1E293B] hover:border-[#6366F1] text-[#F8FAFC]`}
         >
-          Join waitlist — free scan
-        </Link>
+          Start free scan
+        </button>
       );
     }
 
@@ -93,12 +100,18 @@ export function PlanCTA({ plan }: PlanCTAProps) {
   // Pro plan
   if (!isSignedIn) {
     return (
-      <Link
-        href="/"
+      <button
+        type="button"
+        onClick={() =>
+          openSignUp({
+            forceRedirectUrl: "/dashboard?upgrade=true",
+            signInForceRedirectUrl: "/dashboard?upgrade=true",
+          })
+        }
         className={`${base} bg-[#6366F1] hover:bg-[#4F46E5] text-white transition-colors`}
       >
-        Get access, then upgrade
-      </Link>
+        Sign up &amp; buy Launch Pack
+      </button>
     );
   }
 
