@@ -7,7 +7,7 @@ const BASE =
     ? "/api/backend"
     : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
 
-type ApiScanStatus = "queued" | "running" | "done" | "failed";
+type ApiScanStatus = "queued" | "running" | "done" | "failed" | "cancelled";
 
 type TokenGetter = () => Promise<string | null>;
 
@@ -360,6 +360,19 @@ export async function pollGrowthStatus(scanId: string): Promise<GrowthStatusResp
   const res = await fetch(`${BASE}/growth-scans/${scanId}/status`);
   if (!res.ok) throw new Error(`Failed to poll status: ${res.status}`);
   return res.json();
+}
+
+export async function cancelGrowthScan(scanId: string, getToken: TokenGetter): Promise<void> {
+  const token = await getToken();
+  if (!token) throw new Error("auth_invalid");
+  const res = await fetch(`${BASE}/growth-scans/${scanId}/cancel`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  // Best-effort: client already stops polling even if cancel races with completion
+  if (!res.ok && res.status !== 404) {
+    await parseApiError(res, `Could not stop scan (${res.status})`);
+  }
 }
 
 export interface GrowthScanHistoryItemApi {

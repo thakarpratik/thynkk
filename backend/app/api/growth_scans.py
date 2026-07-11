@@ -32,7 +32,57 @@ from app.api.users import get_user_email
 
 router = APIRouter(prefix="/growth-scans", tags=["growth-scans"])
 
-_URL_RE = re.compile(r"^https?://[^\s/]+", re.I)
+from urllib.parse import urlparse
+
+# Host must look like a website domain (or localhost), not an email / random token
+_HOST_RE = re.compile(
+    r"^(?:localhost|(\d{1,3}\.){3}\d{1,3}|([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,})$",
+    re.I,
+)
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def normalize_website_url(raw: str) -> str:
+    """Normalize and validate a public website URL for growth scans."""
+    value = (raw or "").strip()
+    if not value:
+        raise ValueError("Enter a website URL (e.g. https://yourproduct.com).")
+
+    # Bare emails are a common mistake — never treat as a site
+    if _EMAIL_RE.match(value) or ("@" in value and "://" not in value and "/" not in value):
+        raise ValueError("That looks like an email. Enter a website URL instead.")
+
+    if not value.startswith(("http://", "https://")):
+        value = f"https://{value}"
+
+    try:
+        parsed = urlparse(value)
+    except Exception as exc:
+        raise ValueError("Invalid website URL.") from exc
+
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("URL must start with http:// or https://")
+
+    host = (parsed.hostname or "").strip().lower()
+    if not host:
+        raise ValueError("Enter a website URL with a domain (e.g. yourproduct.com).")
+
+    # user@host in the URL authority (https://user@domain) is almost always a mistake
+    if parsed.username or "@" in (parsed.netloc or ""):
+        raise ValueError("That looks like an email. Enter a website URL instead.")
+
+    if not _HOST_RE.match(host):
+        raise ValueError(
+            "Enter a valid website domain (e.g. yourproduct.com), not an email or random text."
+        )
+
+    # Rebuild a clean URL (drop userinfo, keep path/query/port)
+    path = parsed.path or ""
+    query = f"?{parsed.query}" if parsed.query else ""
+    netloc = host
+    if parsed.port and parsed.port not in (80, 443):
+        netloc = f"{host}:{parsed.port}"
+    return f"{parsed.scheme}://{netloc}{path}{query}"
 
 
 class GrowthScanRequest(BaseModel):
@@ -42,12 +92,7 @@ class GrowthScanRequest(BaseModel):
     @field_validator("url")
     @classmethod
     def validate_url(cls, v: str) -> str:
-        raw = v.strip()
-        if not raw.startswith(("http://", "https://")):
-            raw = f"https://{raw}"
-        if not _URL_RE.match(raw):
-            raise ValueError("Invalid URL.")
-        return raw
+        return normalize_website_url(v)
 
 
 class GrowthScanCreated(BaseModel):
@@ -173,6 +218,40 @@ def submit_growth_scan(
     )
 
     return GrowthScanCreated(scan_id=scan_id)
+
+
+@router.post("/{scan_id}/cancel", response_model=GrowthScanStatusResponse)
+def cancel_growth_scan(
+    scan_id: str,
+    clerk_id: ClerkId,
+    store: GrowthScanStore = Depends(get_store),
+) -> GrowthScanStatusResponse:
+    """Mark an in-flight growth scan as cancelled (stops client wait; runner exits early)."""
+    job = store.get(scan_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Scan not found.")
+
+    if job.status in (ScanStatus.done, ScanStatus.failed, ScanStatus.cancelled):
+        return GrowthScanStatusResponse(
+            scan_id=job.scan_id,
+            status=job.status,
+            url=job.url,
+            error=job.error,
+        )
+
+    store.update(
+        scan_id,
+        status=ScanStatus.cancelled,
+        error="Scan stopped by user.",
+    )
+    job = store.get(scan_id)
+    assert job is not None
+    return GrowthScanStatusResponse(
+        scan_id=job.scan_id,
+        status=job.status,
+        url=job.url,
+        error=job.error,
+    )
 
 
 @router.get("/history", response_model=GrowthScanHistoryResponse)

@@ -11,6 +11,10 @@ from app.api.growth_scan_history import save_growth_scan
 from app.api.growth_store import GrowthScanStore
 from app.api.models import ScanStatus
 from app.api.quota import finalize_scan_billing, get_scan_tier
+from app.growth.analyze import analyze_growth, infer_product_context
+from app.growth.cache import get_cached, set_cached
+from app.growth.crawl import crawl_site
+from app.growth.serper import build_queries, search_threads
 
 
 def _log_growth_scan(
@@ -39,14 +43,20 @@ def _log_growth_scan(
         tier=tier,
         attribution=attribution,
     )
-from app.growth.analyze import analyze_growth, infer_product_context
-from app.growth.cache import get_cached, set_cached
-from app.growth.crawl import crawl_site
-from app.growth.serper import build_queries, search_threads
 
 
 def _report_to_dict(report) -> dict:
     return report.model_dump()
+
+
+def _is_cancelled(store: GrowthScanStore, scan_id: str) -> bool:
+    job = store.get(scan_id)
+    return bool(job and job.status == ScanStatus.cancelled)
+
+
+def _abort_if_cancelled(store: GrowthScanStore, scan_id: str) -> bool:
+    """Return True if the job was cancelled (caller should exit quietly)."""
+    return _is_cancelled(store, scan_id)
 
 
 def _run(
@@ -60,12 +70,23 @@ def _run(
     ip: str = "unknown",
     attribution: dict | None = None,
 ) -> None:
-    store.update(scan_id, status=ScanStatus.running)
+    # Don't overwrite a cancel that raced before the thread started
+    if not _is_cancelled(store, scan_id):
+        store.update(scan_id, status=ScanStatus.running)
+
     from_cache = False
     success = False
+    cancelled = False
     try:
+        if _abort_if_cancelled(store, scan_id):
+            cancelled = True
+            return
+
         cached = get_cached(engine, url)
         if cached:
+            if _abort_if_cancelled(store, scan_id):
+                cancelled = True
+                return
             from_cache = True
             store.update(
                 scan_id,
@@ -86,7 +107,15 @@ def _run(
             return
 
         site = crawl_site(url)
+        if _abort_if_cancelled(store, scan_id):
+            cancelled = True
+            return
+
         product = infer_product_context(site)
+        if _abort_if_cancelled(store, scan_id):
+            cancelled = True
+            return
+
         queries = build_queries(
             product["product_name"],
             product["niche_label"],
@@ -98,6 +127,10 @@ def _run(
             niche=product["niche_label"],
             keywords=product.get("keywords", []),
         )
+        if _abort_if_cancelled(store, scan_id):
+            cancelled = True
+            return
+
         if not hits:
             store.update(
                 scan_id,
@@ -112,6 +145,10 @@ def _run(
             return
 
         report = analyze_growth(site, product, hits)
+        if _abort_if_cancelled(store, scan_id):
+            cancelled = True
+            return
+
         payload = _report_to_dict(report)
         set_cached(engine, url, payload)
         store.update(scan_id, status=ScanStatus.done, result=payload, from_cache=False)
@@ -127,6 +164,9 @@ def _run(
         )
 
     except Exception as exc:
+        if _is_cancelled(store, scan_id):
+            cancelled = True
+            return
         msg = str(exc).strip() or exc.__class__.__name__
         if "SERPER_API_KEY" in msg:
             msg = "SERPER_API_KEY is not configured on the server."
@@ -139,13 +179,33 @@ def _run(
             attribution=attribution,
         )
     finally:
-        finalize_scan_billing(
-            engine,
-            scan_id,
-            success=success,
-            from_cache=from_cache,
-            ip=ip,
-        )
+        if cancelled or _is_cancelled(store, scan_id):
+            # Ensure status stays cancelled; do not charge
+            store.update(
+                scan_id,
+                status=ScanStatus.cancelled,
+                error="Scan stopped by user.",
+            )
+            _log_growth_scan(
+                engine, ip=ip, url=url, account_key=account_key, clerk_id=clerk_id,
+                scan_id=scan_id, from_cache=from_cache, status="cancelled",
+                threads_count=0, attribution=attribution,
+            )
+            finalize_scan_billing(
+                engine,
+                scan_id,
+                success=False,
+                from_cache=from_cache,
+                ip=ip,
+            )
+        else:
+            finalize_scan_billing(
+                engine,
+                scan_id,
+                success=success,
+                from_cache=from_cache,
+                ip=ip,
+            )
 
 
 def _persist_growth_scan(

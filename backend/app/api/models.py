@@ -15,6 +15,7 @@ class ScanStatus(str, Enum):
     running = "running"
     done = "done"
     failed = "failed"
+    cancelled = "cancelled"
 
 
 class ScanRequest(BaseModel):

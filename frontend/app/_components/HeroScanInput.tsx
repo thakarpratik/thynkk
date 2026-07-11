@@ -3,14 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useClerk } from "@clerk/nextjs";
-
-function normalizeUrl(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return "";
-  return trimmed.startsWith("http://") || trimmed.startsWith("https://")
-    ? trimmed
-    : `https://${trimmed}`;
-}
+import { normalizeWebsiteUrl } from "../dashboard/_lib/website-url";
 
 interface HeroScanInputProps {
   compact?: boolean;
@@ -25,14 +18,21 @@ export function HeroScanInput({
   const { isSignedIn, isLoaded } = useAuth();
   const { openSignUp } = useClerk();
   const [url, setUrl] = useState("");
+  const [error, setError] = useState("");
 
-  const label =
-    buttonLabel ?? (compact ? "Start scanning" : "Start scanning");
+  const label = buttonLabel ?? "Start scanning";
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    const target = normalizeUrl(url);
-    if (!target) return;
+    setError("");
+
+    let target: string;
+    try {
+      target = normalizeWebsiteUrl(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Enter a valid website URL.");
+      return;
+    }
 
     const dashboardPath = `/dashboard?url=${encodeURIComponent(target)}`;
 
@@ -41,7 +41,6 @@ export function HeroScanInput({
       return;
     }
 
-    // Prompt Clerk signup/login, then land on dashboard with the URL ready
     openSignUp({
       forceRedirectUrl: dashboardPath,
       signInForceRedirectUrl: dashboardPath,
@@ -55,7 +54,10 @@ export function HeroScanInput({
           type="text"
           inputMode="url"
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={(e) => {
+            setUrl(e.target.value);
+            if (error) setError("");
+          }}
           placeholder="Enter your website"
           className="flex-1 bg-[#0E1223] border border-[#1E293B] focus:border-[#6366F1] outline-none text-[#F8FAFC] placeholder:text-[#94A3B8]/50 px-4 py-3.5 rounded-lg text-sm font-mono transition-colors text-left"
           aria-label="Your website URL"
@@ -73,7 +75,10 @@ export function HeroScanInput({
           {label}
         </button>
       </div>
-      {!compact && (
+      {error && (
+        <p className="text-xs text-[#EF4444] mt-2 text-left font-mono">{error}</p>
+      )}
+      {!compact && !error && (
         <p className="text-xs text-[#64748B] mt-3 leading-relaxed">
           Free scan included. Sign in or create an account to start — about 60 seconds.
         </p>

@@ -7,12 +7,14 @@ import type { GrowthReport, ScanStatus } from "./_types";
 import {
   submitGrowthScan,
   pollGrowthStatus,
+  cancelGrowthScan,
   fetchGrowthReport,
   fetchGrowthScanHistory,
   fetchQuota,
   fetchBillingStatus,
   capturePayPalOrder,
 } from "./_lib/api";
+import { normalizeWebsiteUrl } from "./_lib/website-url";
 import { PACK_SCANS } from "../_lib/pricing";
 import { DashboardNav } from "./_components/DashboardNav";
 import { DashboardStepper } from "./_components/DashboardStepper";
@@ -61,8 +63,12 @@ export default function Dashboard() {
   const [quota, setQuota] = useState<Awaited<ReturnType<typeof fetchQuota>> | null>(null);
   const [scanHistory, setScanHistory] = useState<GrowthScanHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [activeScanId, setActiveScanId] = useState<string | null>(null);
+  const [stopping, setStopping] = useState(false);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeScanIdRef = useRef<string | null>(null);
+  const stoppedRef = useRef(false);
   const autoScanStarted = useRef(false);
 
   const reportIsFull = report?.reportTier === "full";
@@ -131,40 +137,91 @@ export default function Dashboard() {
     }
   };
 
+  const clearActiveScan = () => {
+    activeScanIdRef.current = null;
+    setActiveScanId(null);
+    setStopping(false);
+  };
+
   const poll = useCallback((scanId: string) => {
     pollTimer.current = setTimeout(async () => {
+      if (stoppedRef.current || activeScanIdRef.current !== scanId) return;
       try {
         const s = await pollGrowthStatus(scanId);
+        if (stoppedRef.current || activeScanIdRef.current !== scanId) return;
+
         if (s.status === "done") {
           const data = await fetchGrowthReport(scanId, getToken);
+          if (stoppedRef.current || activeScanIdRef.current !== scanId) return;
           setReport(data);
           setScanTime(new Date());
           setStatus("done");
+          clearActiveScan();
           refreshAccount();
           refreshHistory();
         } else if (s.status === "failed") {
           setErrorMessage(s.error ?? "Scan failed. Try a different URL.");
           setStatus("error");
+          clearActiveScan();
+          refreshAccount();
+        } else if (s.status === "cancelled") {
+          setErrorMessage("Scan stopped.");
+          setStatus("error");
+          clearActiveScan();
           refreshAccount();
         } else {
           poll(scanId);
         }
       } catch (e: unknown) {
+        if (stoppedRef.current) return;
         setErrorMessage(formatScanError(e));
         setStatus("error");
+        clearActiveScan();
       }
     }, POLL_INTERVAL_MS);
   }, [getToken, refreshAccount, refreshHistory]);
 
+  const handleStopScan = async () => {
+    const scanId = activeScanIdRef.current;
+    stoppedRef.current = true;
+    stopPolling();
+    setStopping(true);
+
+    if (scanId) {
+      try {
+        await cancelGrowthScan(scanId, getToken);
+      } catch {
+        /* client already stopped waiting */
+      }
+    }
+
+    clearActiveScan();
+    setStatus("idle");
+    setErrorMessage("");
+    refreshAccount();
+  };
+
   const beginScan = async (targetUrl: string) => {
     if (!isLoaded) return;
 
-    setUrl(targetUrl);
-    setScannedUrl(targetUrl);
+    let normalized: string;
+    try {
+      normalized = normalizeWebsiteUrl(targetUrl);
+    } catch (e: unknown) {
+      setErrorMessage(e instanceof Error ? e.message : "Enter a valid website URL.");
+      setStatus("error");
+      return;
+    }
+
+    setUrl(normalized);
+    setScannedUrl(normalized);
     setReport(null);
     setScanTime(null);
     setErrorMessage("");
+    stoppedRef.current = false;
+    setStopping(false);
     stopPolling();
+    clearActiveScan();
 
     if (!isSignedIn) {
       setErrorMessage("Please sign in to scan your site.");
@@ -180,10 +237,22 @@ export default function Dashboard() {
     }
 
     setStatus("loading");
-    submitGrowthScan(targetUrl, getToken).then(poll).catch((e: unknown) => {
-      setErrorMessage(formatScanError(e));
-      setStatus("error");
-    });
+    submitGrowthScan(normalized, getToken)
+      .then((scanId) => {
+        if (stoppedRef.current) {
+          void cancelGrowthScan(scanId, getToken).catch(() => null);
+          return;
+        }
+        activeScanIdRef.current = scanId;
+        setActiveScanId(scanId);
+        poll(scanId);
+      })
+      .catch((e: unknown) => {
+        if (stoppedRef.current) return;
+        setErrorMessage(formatScanError(e));
+        setStatus("error");
+        clearActiveScan();
+      });
   };
 
   const handleScan = () => {
@@ -192,7 +261,9 @@ export default function Dashboard() {
   };
 
   const handleRestoreScan = async (entry: GrowthScanHistoryEntry) => {
+    stoppedRef.current = true;
     stopPolling();
+    clearActiveScan();
     setErrorMessage("");
     setScannedUrl(entry.url);
     setUrl(entry.url);
@@ -211,11 +282,13 @@ export default function Dashboard() {
   };
 
   const handleNewScan = () => {
+    stoppedRef.current = true;
+    stopPolling();
+    clearActiveScan();
     setStatus("idle");
     setReport(null);
     setErrorMessage("");
     setScanTime(null);
-    stopPolling();
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -277,7 +350,9 @@ export default function Dashboard() {
           </div>
         )}
 
-        {status === "loading" && <GrowthScanningState />}
+        {status === "loading" && (
+          <GrowthScanningState onStop={handleStopScan} stopping={stopping} />
+        )}
 
         {status === "error" && (
           <ErrorState
