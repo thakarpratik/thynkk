@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 import httpx
@@ -14,7 +15,10 @@ load_dotenv()
 
 SERPER_URL = "https://google.serper.dev/search"
 _COMMUNITY_DOMAINS = ("reddit.com", "quora.com")
-_MIN_HITS_BEFORE_BROAD = 12
+# Prefer fresh hits; only drop recency filters when pool is thin
+_MIN_HITS_MONTH = 8
+_MIN_HITS_YEAR = 10
+_MIN_HITS_BEFORE_BROAD = 6
 
 
 @dataclass
@@ -191,6 +195,56 @@ def _collect_hits(
     return found
 
 
+def parse_thread_date(date_str: str) -> datetime | None:
+    """Parse Serper date labels like '2 months ago' or 'Mar 12, 2025'."""
+    raw = (date_str or "").strip()
+    if not raw:
+        return None
+    now = datetime.now(timezone.utc)
+    lower = raw.lower()
+
+    m = re.match(r"(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago", lower)
+    if m:
+        n = int(m.group(1))
+        unit = m.group(2)
+        delta = {
+            "second": timedelta(seconds=n),
+            "minute": timedelta(minutes=n),
+            "hour": timedelta(hours=n),
+            "day": timedelta(days=n),
+            "week": timedelta(weeks=n),
+            "month": timedelta(days=30 * n),
+            "year": timedelta(days=365 * n),
+        }.get(unit)
+        if delta is not None:
+            return now - delta
+
+    for fmt in ("%b %d, %Y", "%B %d, %Y", "%Y-%m-%d", "%b %d %Y", "%d %b %Y"):
+        try:
+            return datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return None
+
+
+def thread_recency_score(date_str: str) -> float:
+    """Higher = newer. Unknown dates score low so known-recent wins."""
+    dt = parse_thread_date(date_str)
+    if not dt:
+        return 0.0
+    age_days = max(0.0, (datetime.now(timezone.utc) - dt).total_seconds() / 86400.0)
+    # 0 days → 100, ~30 days → ~70, ~180 days → ~25, 365+ → ~5
+    return round(max(0.0, 100.0 * (0.5 ** (age_days / 90.0))), 2)
+
+
+def sort_hits_by_recency(hits: list[DiscoveredThread]) -> list[DiscoveredThread]:
+    return sorted(
+        hits,
+        key=lambda h: (thread_recency_score(h.date), h.date or ""),
+        reverse=True,
+    )
+
+
 def search_threads(
     queries: list[str],
     api_key: str | None = None,
@@ -199,7 +253,7 @@ def search_threads(
     niche: str = "",
     keywords: list[str] | None = None,
 ) -> list[DiscoveredThread]:
-    """Run Serper queries — recent threads first, broaden if sparse."""
+    """Run Serper queries — past month first, then year, only then unfiltered."""
     key = api_key or os.environ.get("SERPER_API_KEY", "")
     if not key:
         raise RuntimeError("SERPER_API_KEY is not configured.")
@@ -209,22 +263,28 @@ def search_threads(
     results: list[DiscoveredThread] = []
 
     with httpx.Client(timeout=30) as client:
-        # Pass 1: prefer threads from the past year
+        # Pass 1: past month (fresh conversations)
         for query in queries:
-            organic = _serper_search(client, headers, query, per_query=per_query, tbs="qdr:y")
+            organic = _serper_search(client, headers, query, per_query=per_query, tbs="qdr:m")
             results.extend(_collect_hits(organic, query, seen_urls))
 
-        # Pass 2: broaden without recency filter if pool is thin
-        if len(results) < _MIN_HITS_BEFORE_BROAD:
-            fallback = build_broad_fallback_queries(niche, keywords or [])
-            for query in fallback:
-                organic = _serper_search(client, headers, query, per_query=per_query, tbs=None)
+        # Pass 2: past year if month was thin
+        if len(results) < _MIN_HITS_MONTH:
+            for query in queries:
+                organic = _serper_search(client, headers, query, per_query=per_query, tbs="qdr:y")
                 results.extend(_collect_hits(organic, query, seen_urls))
 
-        # Pass 3: re-run primary queries without recency if still thin
-        if len(results) < 8:
+        # Pass 3: broader niche queries still within past year
+        if len(results) < _MIN_HITS_YEAR:
+            fallback = build_broad_fallback_queries(niche, keywords or [])
+            for query in fallback:
+                organic = _serper_search(client, headers, query, per_query=per_query, tbs="qdr:y")
+                results.extend(_collect_hits(organic, query, seen_urls))
+
+        # Pass 4: only if still sparse — drop recency filter (last resort)
+        if len(results) < _MIN_HITS_BEFORE_BROAD:
             for query in queries[:6]:
                 organic = _serper_search(client, headers, query, per_query=per_query, tbs=None)
                 results.extend(_collect_hits(organic, f"{query} (broad)", seen_urls))
 
-    return results
+    return sort_hits_by_recency(results)

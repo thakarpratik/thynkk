@@ -43,6 +43,8 @@ export interface GrowthThread {
   url: string;
   source: string;
   snippet: string;
+  /** Human date from search, e.g. "2 weeks ago" */
+  date: string;
   intentType: string;
   matchReason: string;
   relevanceScore: number;

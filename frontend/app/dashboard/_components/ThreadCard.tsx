@@ -44,6 +44,11 @@ export function ThreadCard({ thread, index, isPro, onUpgrade }: ThreadCardProps)
                 #{index + 1}
               </span>
               <span className="text-[10px] font-mono uppercase text-primary">{thread.source}</span>
+              {thread.date ? (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-border bg-muted/50 text-muted-foreground">
+                  {thread.date}
+                </span>
+              ) : null}
               <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${risk.className}`}>
                 {risk.text}
               </span>

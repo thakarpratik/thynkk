@@ -248,6 +248,7 @@ interface ApiGrowthThread {
   url: string;
   source: string;
   snippet: string;
+  date?: string;
   intent_type: string;
   match_reason: string;
   relevance_score: number;
@@ -288,6 +289,7 @@ function toGrowthThread(t: ApiGrowthThread): GrowthThread {
     url: t.url,
     source: t.source,
     snippet: t.snippet,
+    date: (t.date || "").trim(),
     intentType: t.intent_type,
     matchReason: t.match_reason,
     relevanceScore: t.relevance_score,

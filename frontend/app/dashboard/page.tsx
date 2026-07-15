@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import type { GrowthReport, ScanStatus } from "./_types";
@@ -33,6 +33,7 @@ import {
   GrowthScanHistory,
   type GrowthScanHistoryEntry,
 } from "./_components/GrowthScanHistory";
+import { sortThreads, type ThreadSort } from "./_lib/thread-sort";
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -66,6 +67,7 @@ export default function Dashboard() {
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
   const [resultsTab, setResultsTab] = useState<ResultsTab>("replies");
+  const [threadSort, setThreadSort] = useState<ThreadSort>("latest");
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeScanIdRef = useRef<string | null>(null);
@@ -73,6 +75,11 @@ export default function Dashboard() {
   const autoScanStarted = useRef(false);
 
   const reportIsFull = report?.reportTier === "full";
+
+  const sortedThreads = useMemo(
+    () => (report ? sortThreads(report.threads, threadSort) : []),
+    [report, threadSort],
+  );
 
   const openUpgrade = useCallback(() => {
     setUpgradeError("");
@@ -393,8 +400,37 @@ export default function Dashboard() {
                   description="Existing Reddit discussions. Open the thread → copy the reply draft → paste as a comment. Not a new post."
                   count={`${report.threads.length}${report.totalThreads > report.threads.length ? ` of ${report.totalThreads}` : ""} shown`}
                 />
+
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <span className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground mr-1">
+                    Sort
+                  </span>
+                  {(
+                    [
+                      { id: "latest" as const, label: "Latest first" },
+                      { id: "match" as const, label: "Best match" },
+                    ] as const
+                  ).map((opt) => {
+                    const active = threadSort === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setThreadSort(opt.id)}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                          active
+                            ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                            : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="space-y-4">
-                  {report.threads.map((thread, i) => (
+                  {sortedThreads.map((thread, i) => (
                     <ThreadCard key={thread.url} thread={thread} index={i} isPro={reportIsFull} onUpgrade={openUpgrade} />
                   ))}
                 </div>

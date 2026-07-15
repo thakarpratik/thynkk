@@ -121,6 +121,7 @@ class ThreadOut(BaseModel):
     relevance_score: int
     suggested_reply: str
     promo_risk: str
+    date: str = ""
     locked: bool = False
 
 

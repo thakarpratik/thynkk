@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 import anthropic
@@ -11,7 +12,12 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
 
 from app.growth.crawl import SiteContext
-from app.growth.serper import DiscoveredThread
+from app.growth.serper import (
+    DiscoveredThread,
+    parse_thread_date,
+    sort_hits_by_recency,
+    thread_recency_score,
+)
 
 load_dotenv()
 
@@ -34,6 +40,7 @@ class ThreadOut(BaseModel):
     relevance_score: int = Field(ge=0, le=100)
     suggested_reply: str = ""
     promo_risk: str = "low"
+    date: str = ""
 
 
 class PostIdeaOut(BaseModel):
@@ -320,6 +327,50 @@ def _ensure_product_mentions(report: GrowthReport, site_url: str) -> GrowthRepor
     return ensure_promotional_post_ideas(report, site_url)  # type: ignore[return-value]
 
 
+def _norm_url(url: str) -> str:
+    return (url or "").strip().lower().rstrip("/").split("?")[0]
+
+
+def _attach_dates_and_prefer_recent(
+    report: GrowthReport,
+    hits: list[DiscoveredThread],
+) -> GrowthReport:
+    """Stamp Serper dates onto ranked threads and bias order toward fresher posts."""
+    by_url = {_norm_url(h.url): h for h in hits}
+    stamped: list[ThreadOut] = []
+    for t in report.threads:
+        hit = by_url.get(_norm_url(t.url))
+        date = (t.date or "").strip() or (hit.date if hit else "") or ""
+        stamped.append(t.model_copy(update={"date": date}))
+
+    # Drop very old threads when we have enough fresher ones (< ~9 months)
+    recent: list[ThreadOut] = []
+    older: list[ThreadOut] = []
+    for t in stamped:
+        dt = parse_thread_date(t.date)
+        if dt is None:
+            older.append(t)
+            continue
+        age_days = (datetime.now(timezone.utc) - dt).total_seconds() / 86400.0
+        if age_days <= 270:  # ~9 months
+            recent.append(t)
+        else:
+            older.append(t)
+
+    # Prefer recent; only backfill older if pool is thin
+    chosen = recent if len(recent) >= 5 else recent + older
+    if not chosen:
+        chosen = stamped
+
+    # Default order: recency first, then relevance (UI can re-sort)
+    chosen = sorted(
+        chosen,
+        key=lambda t: (thread_recency_score(t.date), t.relevance_score),
+        reverse=True,
+    )
+    return report.model_copy(update={"threads": chosen})
+
+
 def analyze_growth(
     site: SiteContext,
     product: dict[str, str],
@@ -331,6 +382,9 @@ def analyze_growth(
 
     if client is None:
         client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    # Feed model the freshest hits first
+    hits = sort_hits_by_recency(hits)
 
     template = _PROMPT_PATH.read_text()
     prompt = (
@@ -353,6 +407,7 @@ def analyze_growth(
     try:
         data = _parse_json(response.content[0].text.strip())
         report = GrowthReport(**data)
+        report = _attach_dates_and_prefer_recent(report, hits)
         return _ensure_product_mentions(report, site.url)
     except (json.JSONDecodeError, ValidationError) as exc:
         raw = response.content[0].text.strip()[:500]
