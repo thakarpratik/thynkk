@@ -13,32 +13,60 @@ interface ResultsQuickNavProps {
 const TABS: {
   id: ResultsTab;
   label: string;
-  short: string;
   action: string;
   countKey: "threadCount" | "postCount" | "communityCount";
   hideIfEmpty?: boolean;
+  activeRing: string;
+  activeBg: string;
+  activeBorder: string;
+  activeText: string;
+  activeBadge: string;
+  idleBorder: string;
+  idleHover: string;
+  icon: string;
 }[] = [
   {
     id: "replies",
     label: "Reply to threads",
-    short: "Reply",
-    action: "Join existing conversations",
+    action: "Comment on existing posts",
     countKey: "threadCount",
+    activeRing: "ring-sky-500/50",
+    activeBg: "bg-sky-500/15",
+    activeBorder: "border-sky-500",
+    activeText: "text-sky-300",
+    activeBadge: "bg-sky-500 text-white",
+    idleBorder: "border-sky-500/25",
+    idleHover: "hover:border-sky-500/60 hover:bg-sky-500/10",
+    icon: "💬",
   },
   {
     id: "posts",
     label: "Create new posts",
-    short: "New posts",
-    action: "Start threads on Reddit",
+    action: "Start your own Reddit threads",
     countKey: "postCount",
+    activeRing: "ring-emerald-500/50",
+    activeBg: "bg-emerald-500/15",
+    activeBorder: "border-emerald-500",
+    activeText: "text-emerald-300",
+    activeBadge: "bg-emerald-500 text-white",
+    idleBorder: "border-emerald-500/25",
+    idleHover: "hover:border-emerald-500/60 hover:bg-emerald-500/10",
+    icon: "✍️",
   },
   {
     id: "communities",
     label: "Communities",
-    short: "Communities",
     action: "Where to post & reply",
     countKey: "communityCount",
     hideIfEmpty: true,
+    activeRing: "ring-violet-500/50",
+    activeBg: "bg-violet-500/15",
+    activeBorder: "border-violet-500",
+    activeText: "text-violet-300",
+    activeBadge: "bg-violet-500 text-white",
+    idleBorder: "border-violet-500/25",
+    idleHover: "hover:border-violet-500/60 hover:bg-violet-500/10",
+    icon: "🏘️",
   },
 ];
 
@@ -50,62 +78,92 @@ export function ResultsQuickNav({
   communityCount,
 }: ResultsQuickNavProps) {
   const counts = { threadCount, postCount, communityCount };
-
   const visible = TABS.filter((tab) => !(tab.hideIfEmpty && counts[tab.countKey] === 0));
+  const cols =
+    visible.length >= 3 ? "sm:grid-cols-3" : visible.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-1";
 
   return (
     <nav aria-label="Results type" className="mb-6">
-      <div className="sticky top-14 z-40 -mx-4 sm:-mx-0 py-3 bg-background/90 backdrop-blur-sm border-b border-border sm:rounded-xl sm:border sm:px-2 sm:py-2">
-        <div
-          role="tablist"
-          className="flex gap-1 overflow-x-auto px-4 sm:px-1 scrollbar-none"
-        >
-          {visible.map((tab) => {
-            const isActive = active === tab.id;
-            const count = counts[tab.countKey];
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => onChange(tab.id)}
-                className={`shrink-0 flex flex-col items-start gap-0.5 px-4 py-2.5 rounded-lg text-left transition-colors cursor-pointer border ${
-                  isActive
-                    ? "bg-primary/15 border-primary/40 text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <span className={`text-xs font-semibold ${isActive ? "text-primary" : ""}`}>
-                    <span className="sm:hidden">{tab.short}</span>
-                    <span className="hidden sm:inline">{tab.label}</span>
-                  </span>
-                  <span
-                    className={`font-mono text-[11px] px-1.5 py-0.5 rounded-md ${
-                      isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+      <p className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground mb-3">
+        Choose what to do next
+      </p>
+
+      <div
+        role="tablist"
+        className={`grid grid-cols-1 ${cols} gap-3 sticky top-14 z-40`}
+      >
+        {visible.map((tab) => {
+          const isActive = active === tab.id;
+          const count = counts[tab.countKey];
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => onChange(tab.id)}
+              className={[
+                "w-full text-left rounded-xl border-2 px-4 py-4 transition-all cursor-pointer",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                isActive
+                  ? `${tab.activeBg} ${tab.activeBorder} ring-2 ${tab.activeRing} shadow-lg shadow-black/20`
+                  : `bg-card ${tab.idleBorder} ${tab.idleHover} opacity-90 hover:opacity-100`,
+              ].join(" ")}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-base leading-none" aria-hidden>
+                      {tab.icon}
+                    </span>
+                    <span
+                      className={`text-sm font-semibold leading-snug ${
+                        isActive ? tab.activeText : "text-foreground"
+                      }`}
+                    >
+                      {tab.label}
+                    </span>
+                  </div>
+                  <p
+                    className={`text-xs leading-relaxed ${
+                      isActive ? "text-foreground/80" : "text-muted-foreground"
                     }`}
                   >
-                    {count}
-                  </span>
+                    {tab.action}
+                  </p>
+                </div>
+                <span
+                  className={[
+                    "shrink-0 font-mono text-sm font-bold min-w-8 h-8 px-2 rounded-lg flex items-center justify-center",
+                    isActive
+                      ? tab.activeBadge
+                      : "bg-muted text-muted-foreground border border-border",
+                  ].join(" ")}
+                >
+                  {count}
                 </span>
-                <span className={`text-[10px] leading-tight ${isActive ? "text-primary/80" : "text-muted-foreground/80"}`}>
-                  {tab.action}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+              </div>
+              {isActive ? (
+                <p className={`mt-3 text-[10px] font-mono font-semibold uppercase tracking-wider ${tab.activeText}`}>
+                  Selected · viewing below
+                </p>
+              ) : (
+                <p className="mt-3 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                  Click to open →
+                </p>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Action callout so the two modes never blur together */}
       <div
         className={`mt-4 rounded-xl border px-4 py-3 ${
           active === "replies"
             ? "border-sky-500/30 bg-sky-500/5"
             : active === "posts"
               ? "border-emerald-500/30 bg-emerald-500/5"
-              : "border-border bg-muted/30"
+              : "border-violet-500/30 bg-violet-500/5"
         }`}
       >
         {active === "replies" && (
@@ -124,7 +182,7 @@ export function ResultsQuickNav({
         )}
         {active === "communities" && (
           <p className="text-sm text-foreground/90 leading-relaxed">
-            <span className="font-semibold text-primary">Where to show up — </span>
+            <span className="font-semibold text-violet-300">Where to show up — </span>
             Bookmark these communities. Use them for both replying to threads and creating new posts.
           </p>
         )}
