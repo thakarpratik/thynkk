@@ -22,7 +22,7 @@ import { GrowthScanInput } from "./_components/GrowthScanInput";
 import { GrowthScanningState } from "./_components/GrowthScanningState";
 import { GrowthIdleState } from "./_components/GrowthIdleState";
 import { GrowthReportSummary } from "./_components/GrowthReportSummary";
-import { ResultsQuickNav } from "./_components/ResultsQuickNav";
+import { ResultsQuickNav, type ResultsTab } from "./_components/ResultsQuickNav";
 import { SectionHeader } from "./_components/SectionHeader";
 import { ErrorState } from "./_components/ErrorState";
 import { ThreadCard } from "./_components/ThreadCard";
@@ -65,6 +65,7 @@ export default function Dashboard() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
+  const [resultsTab, setResultsTab] = useState<ResultsTab>("replies");
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeScanIdRef = useRef<string | null>(null);
@@ -154,6 +155,7 @@ export default function Dashboard() {
           const data = await fetchGrowthReport(scanId, getToken);
           if (stoppedRef.current || activeScanIdRef.current !== scanId) return;
           setReport(data);
+          setResultsTab("replies");
           setScanTime(new Date());
           setStatus("done");
           clearActiveScan();
@@ -272,6 +274,7 @@ export default function Dashboard() {
     try {
       const data = await fetchGrowthReport(entry.scanId, getToken);
       setReport(data);
+      setResultsTab("replies");
       setScanTime(new Date(entry.scannedAt));
       setStatus("done");
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -375,51 +378,57 @@ export default function Dashboard() {
             />
 
             <ResultsQuickNav
+              active={resultsTab}
+              onChange={setResultsTab}
               threadCount={report.threads.length}
               postCount={report.postIdeas.length}
               communityCount={report.subreddits.length}
             />
 
-            <section className="mb-12">
-              <SectionHeader
-                step={1}
-                title="Join these conversations"
-                description="Open a thread, read the discussion, then paste your reply draft. Start with low promo-risk threads."
-                count={`${report.threads.length}${report.totalThreads > report.threads.length ? ` of ${report.totalThreads}` : ""} shown`}
-              />
-              <div className="space-y-4">
-                {report.threads.map((thread, i) => (
-                  <ThreadCard key={thread.url} thread={thread} index={i} isPro={reportIsFull} onUpgrade={openUpgrade} />
-                ))}
-              </div>
-              {!reportIsFull && hiddenThreads > 0 && (
-                <UpgradeStrip variant="growth" hiddenCount={hiddenThreads} onUpgrade={openUpgrade} />
-              )}
-            </section>
+            {resultsTab === "replies" && (
+              <section className="mb-12" role="tabpanel" aria-label="Reply to threads">
+                <SectionHeader
+                  step={1}
+                  title="Reply to these threads"
+                  description="Existing Reddit discussions. Open the thread → copy the reply draft → paste as a comment. Not a new post."
+                  count={`${report.threads.length}${report.totalThreads > report.threads.length ? ` of ${report.totalThreads}` : ""} shown`}
+                />
+                <div className="space-y-4">
+                  {report.threads.map((thread, i) => (
+                    <ThreadCard key={thread.url} thread={thread} index={i} isPro={reportIsFull} onUpgrade={openUpgrade} />
+                  ))}
+                </div>
+                {!reportIsFull && hiddenThreads > 0 && (
+                  <UpgradeStrip variant="growth" hiddenCount={hiddenThreads} onUpgrade={openUpgrade} />
+                )}
+              </section>
+            )}
 
-            <section className="mb-12">
-              <SectionHeader
-                step={2}
-                title="Create these posts"
-                description="When replying isn't enough, use these post ideas to start new discussions in the right communities."
-                count={`${report.postIdeas.length}${report.totalPostIdeas > report.postIdeas.length ? ` of ${report.totalPostIdeas}` : ""} shown`}
-              />
-              <div className="space-y-4">
-                {report.postIdeas.map((idea, i) => (
-                  <PostIdeaCard key={idea.title} idea={idea} index={i} isPro={reportIsFull} onUpgrade={openUpgrade} />
-                ))}
-              </div>
-              {!reportIsFull && hiddenPosts > 0 && (
-                <UpgradeStrip variant="growth-posts" hiddenCount={hiddenPosts} onUpgrade={openUpgrade} />
-              )}
-            </section>
+            {resultsTab === "posts" && (
+              <section className="mb-12" role="tabpanel" aria-label="Create new posts">
+                <SectionHeader
+                  step={2}
+                  title="Create new posts on Reddit"
+                  description="Your own threads — not replies. Copy title + body, go to the subreddit, and create a new post."
+                  count={`${report.postIdeas.length}${report.totalPostIdeas > report.postIdeas.length ? ` of ${report.totalPostIdeas}` : ""} shown`}
+                />
+                <div className="space-y-4">
+                  {report.postIdeas.map((idea, i) => (
+                    <PostIdeaCard key={idea.title} idea={idea} index={i} isPro={reportIsFull} onUpgrade={openUpgrade} />
+                  ))}
+                </div>
+                {!reportIsFull && hiddenPosts > 0 && (
+                  <UpgradeStrip variant="growth-posts" hiddenCount={hiddenPosts} onUpgrade={openUpgrade} />
+                )}
+              </section>
+            )}
 
-            {report.subreddits.length > 0 && (
-              <section className="mb-8">
+            {resultsTab === "communities" && report.subreddits.length > 0 && (
+              <section className="mb-8" role="tabpanel" aria-label="Communities">
                 <SectionHeader
                   step={3}
                   title="Communities to watch"
-                  description="Subreddits and forums where your audience hangs out. Bookmark these for ongoing engagement."
+                  description="Subreddits where your audience hangs out. Use these for both replying and creating new posts."
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {report.subreddits.map((s) => (

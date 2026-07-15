@@ -51,8 +51,11 @@ export function PostIdeaCard({ idea, index, isPro, onUpgrade }: PostIdeaCardProp
     <article className="rounded-xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-colors">
       <div className="px-5 py-4 border-b border-border bg-muted/20">
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className="text-[10px] font-mono font-semibold text-muted-foreground">
-            Post idea {index + 1}
+          <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+            Create new post
+          </span>
+          <span className="text-[10px] font-mono text-muted-foreground">
+            #{index + 1}
           </span>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-accent/30 bg-accent/10 text-accent">
             {idea.targetCommunity}
@@ -67,8 +70,8 @@ export function PostIdeaCard({ idea, index, isPro, onUpgrade }: PostIdeaCardProp
       </div>
 
       <div className="px-5 py-4">
-        <p className="text-xs font-mono text-primary uppercase tracking-widest mb-2">
-          Ready to post
+        <p className="text-xs font-mono text-emerald-400 uppercase tracking-widest mb-2">
+          New post draft · paste as your own thread
         </p>
         <div className={`rounded-lg bg-muted/40 p-4 ${locked ? "relative overflow-hidden" : ""}`}>
           {locked && (

@@ -48,16 +48,16 @@ export function GrowthIdleState({ onScan }: GrowthIdleStateProps) {
         <div className="divide-y divide-border">
           {[
             {
-              label: "Threads to join",
-              text: "Real discussions where your product fits — ranked by relevance.",
+              label: "Reply to threads",
+              text: "Existing Reddit discussions + copy-ready comment drafts.",
             },
             {
-              label: "Reply drafts",
-              text: "Helpful, non-spammy responses you can copy and tweak.",
+              label: "Create new posts",
+              text: "Original post titles & bodies to publish as your own threads.",
             },
             {
-              label: "Post ideas",
-              text: "Original posts to start conversations in the right communities.",
+              label: "Communities",
+              text: "Subreddits where your audience already hangs out.",
             },
           ].map((row) => (
             <div key={row.label} className="px-5 py-4 flex gap-4">

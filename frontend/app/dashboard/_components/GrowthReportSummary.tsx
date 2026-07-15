@@ -46,16 +46,16 @@ export function GrowthReportSummary({
       </div>
 
       <div className="grid grid-cols-3 gap-3 mt-6">
-        <div className="rounded-lg bg-background/60 border border-border px-4 py-3 text-center">
+        <div className="rounded-lg bg-sky-500/5 border border-sky-500/20 px-4 py-3 text-center">
           <p className="font-mono text-2xl font-bold text-foreground">{report.totalThreads}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">conversations</p>
+          <p className="text-xs text-sky-400/90 mt-0.5 font-medium">reply to threads</p>
           {!isPro && hiddenThreads > 0 && (
             <p className="text-[10px] text-primary mt-1">+{hiddenThreads} on Pro</p>
           )}
         </div>
-        <div className="rounded-lg bg-background/60 border border-border px-4 py-3 text-center">
+        <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 px-4 py-3 text-center">
           <p className="font-mono text-2xl font-bold text-foreground">{report.totalPostIdeas}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">post ideas</p>
+          <p className="text-xs text-emerald-400/90 mt-0.5 font-medium">create new posts</p>
           {!isPro && hiddenPosts > 0 && (
             <p className="text-[10px] text-primary mt-1">+{hiddenPosts} on Pro</p>
           )}

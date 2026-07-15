@@ -37,8 +37,11 @@ export function ThreadCard({ thread, index, isPro, onUpgrade }: ThreadCardProps)
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="text-[10px] font-mono font-semibold text-muted-foreground">
-                Conversation {index + 1}
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-400">
+                Reply to thread
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground">
+                #{index + 1}
               </span>
               <span className="text-[10px] font-mono uppercase text-primary">{thread.source}</span>
               <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${risk.className}`}>
@@ -68,8 +71,8 @@ export function ThreadCard({ thread, index, isPro, onUpgrade }: ThreadCardProps)
       </div>
 
       <div className="px-5 py-4">
-        <p className="text-xs font-mono text-primary uppercase tracking-widest mb-2">
-          Your reply draft
+        <p className="text-xs font-mono text-sky-400 uppercase tracking-widest mb-2">
+          Reply draft · paste as a comment
         </p>
         <div className={`rounded-lg bg-muted/40 p-4 ${locked ? "relative overflow-hidden" : ""}`}>
           {locked && (
