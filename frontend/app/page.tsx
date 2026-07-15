@@ -5,6 +5,7 @@ import { SiteFooter } from "./_components/SiteFooter";
 import { PlanCTA } from "./_components/PlanCTA";
 import { LiveActivity } from "./_components/LiveActivity";
 import { HeroCTA } from "./_components/HeroCTA";
+import { DemoVideo } from "./_components/DemoVideo";
 import { PACK_FEATURE_LIST, PACK_NAME, PACK_PRICE_USD } from "./_lib/pricing";
 
 export const metadata: Metadata = {
@@ -34,10 +35,39 @@ export default function LandingPage() {
           <p className="text-xl text-[#94A3B8] max-w-2xl mx-auto mb-4 leading-relaxed">
             Thynkk reads your site, finds the Reddit conversations worth joining, and writes what you&apos;d say — so you show up where <span className="text-[#F8FAFC]">buyers are already talking</span>.
           </p>
-          <p className="text-base text-[#64748B] max-w-xl mx-auto mb-10 leading-relaxed">
+          <p className="text-base text-[#64748B] max-w-xl mx-auto mb-8 leading-relaxed">
             Paste your website. Get ranked threads and reply drafts in about 60 seconds.
           </p>
           <HeroCTA />
+          <p className="mt-6">
+            <a
+              href="#see-how-it-works"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[#94A3B8] hover:text-[#F8FAFC] transition-colors"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#334155] bg-[#0E1223] text-[#6366F1]">
+                ▶
+              </span>
+              See how it works
+            </a>
+          </p>
+        </div>
+      </section>
+
+      <section
+        id="see-how-it-works"
+        className="scroll-mt-24 py-16 px-6 border-t border-[#1E293B]"
+      >
+        <div className="max-w-4xl mx-auto">
+          <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">
+            See how it works
+          </p>
+          <h2 className="font-mono text-3xl font-bold text-center mb-3">
+            Watch Thynkk in 60 seconds
+          </h2>
+          <p className="text-center text-[#94A3B8] text-sm max-w-xl mx-auto mb-10 leading-relaxed">
+            Paste a site, get ranked Reddit threads, and copy reply drafts — without the scroll.
+          </p>
+          <DemoVideo />
         </div>
       </section>
 
