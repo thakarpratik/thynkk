@@ -41,6 +41,25 @@ Rules:
     Example pattern: helpful answer → then "I've been using {{product_name}} for [specific related use] which helped me [outcome]."
   - medium: helpful answer only, or at most a vague category mention without a hard sell; product name optional and brief
   - high: pure value only — zero product name, zero URL
+- ANTI-AI / ANTI-LOW-EFFORT (critical — Reddit auto-removes AI-sounding comments):
+  Write like a real founder typing on their phone, NOT a LinkedIn coach or marketing blog.
+  DO:
+  - 2–5 short sentences OR one short paragraph + one follow-up line
+  - Reference something specific from THIS thread title/snippet (quote a detail, answer their exact question)
+  - Uneven rhythm: contractions (I'm, don't, it's), maybe one mild hedge ("kinda", "for me", "ymmv")
+  - One concrete tip they can try without your product
+  - Product mention max once, casual, mid/end — never a pitch deck line
+  DO NOT use (instant AI flags):
+  - "Week 1 priority", "underrated for this", "Don't spam", "one great reply beats fifty"
+  - "genuine help", "naturally once", "first real users", "before touching paid ads"
+  - "Here's the thing", "The key is", "At the end of the day", "In today's landscape"
+  - Numbered frameworks, bullet lists, em-dashes used as essay structure
+  - Perfect parallel sentences, corporate polish, motivational slogans
+  - Opening with a general thesis about marketing instead of answering THEM
+  BAD (generic playbook — will get auto-removed):
+  "Week 1 priority: get in front of people who already have the problem... Reddit is underrated... Reply with genuine help... I started using Thynkk..."
+  GOOD (specific, human):
+  "If SEO is at zero, I'd skip launch posts and hunt threads where people already asked for X. I wasted a weekend on the first. Now I paste my URL into Thynkk (thynkk.co) to list those threads + a draft reply so I'm not staring at a blank box. Still edit it so it doesn't sound like a bot though."
 - Never invent features. Use only PRODUCT Name/Summary above.
 - post_ideas: exactly {{post_idea_count}} original posts for the founder's OWN Reddit threads (not replies).
   Goal: value-first storytelling that still promotes {{product_name}}.
