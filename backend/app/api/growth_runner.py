@@ -11,7 +11,7 @@ from app.api.growth_scan_history import save_growth_scan
 from app.api.growth_store import GrowthScanStore
 from app.api.models import ScanStatus
 from app.api.quota import finalize_scan_billing, get_scan_tier
-from app.growth.analyze import analyze_growth, infer_product_context
+from app.growth.analyze import analyze_growth, ensure_promotional_post_ideas, infer_product_context
 from app.growth.cache import get_cached, set_cached
 from app.growth.crawl import crawl_site
 from app.growth.serper import build_queries, search_threads
@@ -88,6 +88,8 @@ def _run(
                 cancelled = True
                 return
             from_cache = True
+            # Upgrade older cached drafts (outline-only / missing product promo)
+            cached = ensure_promotional_post_ideas(cached, url)
             store.update(
                 scan_id,
                 status=ScanStatus.done,

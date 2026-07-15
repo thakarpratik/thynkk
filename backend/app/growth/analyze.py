@@ -113,27 +113,81 @@ def _domain_label(url: str) -> str:
         return url
 
 
-def _compose_post_body(idea: PostIdeaOut, product_name: str, domain: str) -> str:
-    """Fallback body when the model only returns outline bullets."""
-    parts: list[str] = []
-    hook = (idea.hook or "").strip()
+def _is_outline_like(text: str) -> bool:
+    """True when body is mostly numbered bullets (not paste-ready prose)."""
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if len(lines) < 3:
+        return False
+    numbered = sum(1 for ln in lines if ln[:1].isdigit() or ln.startswith(("- ", "* ", "• ")))
+    return numbered >= max(2, len(lines) // 2)
+
+
+def _strip_outline_prefix(line: str) -> str:
+    s = line.strip()
+    # "1. foo", "1) foo", "- foo"
+    i = 0
+    while i < len(s) and s[i].isdigit():
+        i += 1
+    if i > 0 and i < len(s) and s[i] in ".)":
+        s = s[i + 1 :].strip()
+    elif s.startswith(("- ", "* ", "• ")):
+        s = s[2:].strip()
+    # "Question 1: ..."
+    if s.lower().startswith("question ") and ":" in s[:20]:
+        s = s.split(":", 1)[1].strip()
+    return s
+
+
+def _build_promotional_prose(idea: PostIdeaOut, product_name: str, domain: str) -> str:
+    """Real Reddit self-post: story + product promotion (not an outline dump)."""
+    label = (product_name or "").strip() or domain
+    hook = (idea.hook or "").strip() or (idea.title or "").strip()
+    bullets = [_strip_outline_prefix(o) for o in (idea.outline or []) if o and o.strip()]
+    # Prefer outline; if body is outline-like, mine those lines too
+    if not bullets and idea.body:
+        bullets = [
+            _strip_outline_prefix(ln)
+            for ln in idea.body.splitlines()
+            if ln.strip() and (ln.strip()[:1].isdigit() or ln.strip().startswith(("- ", "* ")))
+        ]
+
+    paras: list[str] = []
     if hook:
-        parts.append(hook)
-    outline = [o.strip() for o in (idea.outline or []) if o and o.strip()]
-    if outline:
-        if parts:
-            parts.append("")
-        for i, line in enumerate(outline, 1):
-            parts.append(f"{i}. {line}")
-    label = product_name or domain
-    parts.append("")
-    parts.append(
-        f"What finally helped me stop guessing was running myself through {label} "
-        f"({domain}) — seeing scores side by side made the weak spot obvious."
+        paras.append(hook)
+
+    if bullets:
+        # First 1–2 points as story context
+        lead = bullets[:2]
+        for b in lead:
+            if b and b.lower() not in hook.lower():
+                paras.append(b if b.endswith((".", "?", "!")) else f"{b}.")
+
+    paras.append(
+        f"What actually helped me stop spinning was running myself through {label} "
+        f"({domain}). It breaks things into clear categories and gives you a score per area - "
+        f"so you can see whether diet is really the issue or if sleep/stress is quietly worse."
     )
-    parts.append("")
-    parts.append("Curious what others here have found works — happy to dig into comments.")
-    return "\n".join(parts).strip()
+
+    # Remaining outline points as concrete takeaways (prose, not numbered list)
+    rest = bullets[2:5] if bullets else []
+    for b in rest:
+        if not b:
+            continue
+        # Skip if it already sounds like a product CTA we just wrote
+        if domain.lower() in b.lower() or (label.lower() in b.lower() and "score" in b.lower()):
+            continue
+        sentence = b if b.endswith((".", "?", "!")) else f"{b}."
+        paras.append(sentence)
+
+    paras.append(
+        f"If you're stuck in the same loop of random gut tips, try scoring yourself on "
+        f"{label} ({domain}) once - then focus on the lowest pillar for a week and see what moves."
+    )
+    paras.append(
+        "Curious where you'd score lowest right now - diet, digestion, sleep, or stress? "
+        "Drop it in the comments."
+    )
+    return "\n\n".join(paras).strip()
 
 
 def _text_has_product(text: str, product_name: str, domain: str) -> bool:
@@ -152,7 +206,7 @@ def _text_has_product(text: str, product_name: str, domain: str) -> bool:
 
 
 def _promote_post_body(body: str, product_name: str, domain: str) -> str:
-    """Ensure create-new-post bodies mention product name + domain."""
+    """Append product mention when prose is good but brand is missing."""
     label = product_name.strip() or domain
     mention = (
         f"What finally clicked for me was scoring it properly with {label} "
@@ -160,7 +214,6 @@ def _promote_post_body(body: str, product_name: str, domain: str) -> str:
         f"was obvious instead of guessing from random advice."
     )
     text = body.rstrip()
-    # Prefer inserting before a trailing question if present
     lines = text.split("\n")
     if lines and lines[-1].strip().endswith("?"):
         head = "\n".join(lines[:-1]).rstrip()
@@ -169,43 +222,102 @@ def _promote_post_body(body: str, product_name: str, domain: str) -> str:
     return f"{text}\n\n{mention}"
 
 
-def _ensure_product_mentions(report: GrowthReport, site_url: str) -> GrowthReport:
-    """Reply drafts (low risk) + create-new-post drafts must promote the product."""
-    name = (report.product_name or "").strip()
-    domain = _domain_label(site_url)
-    name_l = name.lower()
-    patched_threads: list[ThreadOut] = []
+def ensure_promotional_post_ideas(
+    report: GrowthReport | dict,
+    site_url: str,
+    *,
+    product_name: str | None = None,
+) -> GrowthReport | dict:
+    """Make create-new-post drafts paste-ready prose that promotes the product.
 
-    for t in report.threads:
-        reply = (t.suggested_reply or "").strip()
-        risk = (t.promo_risk or "medium").lower()
-        if name and risk == "low" and reply and name_l not in reply.lower() and domain.lower() not in reply.lower():
-            mention = (
-                f"I've been using {name} ({domain}) for this exact problem — "
-                f"it helped me get a clearer starting point instead of guessing."
+    Works on GrowthReport models and plain cached dicts (so cache hits still upgrade).
+    """
+    is_dict = isinstance(report, dict)
+    if is_dict:
+        name = (product_name or report.get("product_name") or "").strip()
+        domain = _domain_label(site_url or report.get("url") or "")
+        threads = report.get("threads") or []
+        post_ideas = report.get("post_ideas") or []
+    else:
+        name = (product_name or report.product_name or "").strip()
+        domain = _domain_label(site_url)
+        threads = report.threads
+        post_ideas = report.post_ideas
+
+    if not domain:
+        domain = "your site"
+
+    # --- reply drafts (low risk) ---
+    new_threads = []
+    for t in threads:
+        if is_dict:
+            reply = (t.get("suggested_reply") or "").strip()
+            risk = (t.get("promo_risk") or "medium").lower()
+            if name and risk == "low" and reply and not _text_has_product(reply, name, domain):
+                reply = (
+                    f"{reply.rstrip()}\n\n"
+                    f"I've been using {name} ({domain}) for this exact problem — "
+                    f"it helped me get a clearer starting point instead of guessing."
+                )
+                t = {**t, "suggested_reply": reply}
+            new_threads.append(t)
+        else:
+            reply = (t.suggested_reply or "").strip()
+            risk = (t.promo_risk or "medium").lower()
+            if name and risk == "low" and reply and not _text_has_product(reply, name, domain):
+                reply = (
+                    f"{reply.rstrip()}\n\n"
+                    f"I've been using {name} ({domain}) for this exact problem — "
+                    f"it helped me get a clearer starting point instead of guessing."
+                )
+                t = t.model_copy(update={"suggested_reply": reply})
+            new_threads.append(t)
+
+    # --- create new posts ---
+    new_posts = []
+    for p in post_ideas:
+        if is_dict:
+            idea = PostIdeaOut(
+                title=p.get("title") or "",
+                hook=p.get("hook") or "",
+                outline=list(p.get("outline") or []),
+                body=(p.get("body") or "").strip(),
+                target_community=p.get("target_community") or "",
+                based_on_trend=p.get("based_on_trend") or "",
             )
-            reply = f"{reply.rstrip()}\n\n{mention}"
-        patched_threads.append(t.model_copy(update={"suggested_reply": reply}))
+        else:
+            idea = p
 
-    patched_posts: list[PostIdeaOut] = []
-    for p in report.post_ideas:
-        body = (p.body or "").strip()
-        if not body:
-            body = _compose_post_body(p, name, domain)
+        body = (idea.body or "").strip()
+        # Outline dumps are not paste-ready — rewrite as promotional prose
+        if (not body) or _is_outline_like(body):
+            body = _build_promotional_prose(idea, name, domain)
         elif not _text_has_product(body, name, domain):
             body = _promote_post_body(body, name, domain)
 
-        outline = list(p.outline or [])
-        outline_text = " ".join(outline)
-        if outline and not _text_has_product(outline_text, name, domain):
+        # Final hard guarantee: product name + domain must appear
+        if not _text_has_product(body, name, domain):
+            body = _promote_post_body(body, name, domain)
+
+        outline = list(idea.outline or [])
+        if outline and not _text_has_product(" ".join(outline), name, domain):
             label = name or domain
             outline = outline + [
-                f"Share how {label} ({domain}) made the weak spot obvious — without turning the post into an ad"
+                f"Mention {label} ({domain}) as what you used to score the pillars — keep it one sentence, not a pitch"
             ]
 
-        patched_posts.append(p.model_copy(update={"body": body, "outline": outline}))
+        if is_dict:
+            new_posts.append({**p, "body": body, "outline": outline})
+        else:
+            new_posts.append(idea.model_copy(update={"body": body, "outline": outline}))
 
-    return report.model_copy(update={"threads": patched_threads, "post_ideas": patched_posts})
+    if is_dict:
+        return {**report, "threads": new_threads, "post_ideas": new_posts}
+    return report.model_copy(update={"threads": new_threads, "post_ideas": new_posts})
+
+
+def _ensure_product_mentions(report: GrowthReport, site_url: str) -> GrowthReport:
+    return ensure_promotional_post_ideas(report, site_url)  # type: ignore[return-value]
 
 
 def analyze_growth(

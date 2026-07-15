@@ -8,7 +8,7 @@ from sqlalchemy.engine import Engine
 
 CACHE_TTL_HOURS = 24
 # Bump when search/analysis pipeline changes to invalidate stale reports
-CACHE_PIPELINE_VERSION = "v2"
+CACHE_PIPELINE_VERSION = "v3"
 
 
 def ensure_cache_table(engine: Engine) -> None:
