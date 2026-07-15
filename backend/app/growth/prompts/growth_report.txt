@@ -21,8 +21,15 @@ Rules:
 - For unknown brands, match on PROBLEM and NICHE fit — not whether the thread mentions the product by name
 - Prefer: questions, recommendations, "how do I", "what tool", complaints seeking solutions
 - Deprioritize: memes, drama, unrelated politics, megathreads with 50+ brands already, ancient dead threads
-- Return 5-10 threads when {{hit_count}} >= 5; never return only 1-2 threads if more viable hits exist
+- Return exactly {{thread_count}} threads (never more). Prefer quality over quantity.
 - When scores are similar, rank newer threads above older ones
+- Keep JSON compact so it never truncates:
+  - suggested_reply: max 90 words
+  - post_ideas: exactly {{post_idea_count}} items
+  - post_ideas.body: max 160 words (still full prose, not an outline)
+  - post_ideas.outline: 3–4 short bullets
+  - snippet / match_reason: one short sentence each
+  - Escape all quotes inside strings. No trailing commas. JSON only — no markdown fences, no commentary.
 - promo_risk is about THREAD FIT for mentioning this product (not how salesy the writing sounds):
   - low = recommendations / "what tool" / "how do I" / seeking solutions → SAFE to name the product
   - medium = general discussion → soft, optional mention only
@@ -35,27 +42,13 @@ Rules:
   - medium: helpful answer only, or at most a vague category mention without a hard sell; product name optional and brief
   - high: pure value only — zero product name, zero URL
 - Never invent features. Use only PRODUCT Name/Summary above.
-- post_ideas: 3-5 original posts the founder could publish as THEIR OWN Reddit threads (not replies).
-  Goal: value-first storytelling that still promotes {{product_name}} so readers can find the product.
-  These are self-posts for distribution — NOT pure education with zero brand.
+- post_ideas: exactly {{post_idea_count}} original posts for the founder's OWN Reddit threads (not replies).
+  Goal: value-first storytelling that still promotes {{product_name}}.
 - target_community: subreddit or Quora topic name (e.g. r/SaaS)
-- post_ideas.outline: 4–6 bullets. At least one bullet MUST be about using {{product_name}}
-  (e.g. scoring, trying the tool, what the report showed) — not only generic lifestyle advice.
-- post_ideas.body: FULL Reddit post body ready to copy-paste (NOT an outline list).
-  Write 180–400 words in natural first-person founder voice.
-  Structure:
-  1) Hook / personal story (problem)
-  2) What you tried / insight
-  3) How {{product_name}} fits the story (REQUIRED) — name the product AND the domain once
-     (domain only from PRODUCT URL, e.g. gutguage.com). Frame as "what I used" / "I ran myself through X" /
-     "built a simple score on {{product_name}}" — not "buy my product" or a homepage dump.
-  4) Specific takeaway others can use without the product
-  5) End with a genuine question to invite comments
-  Hard rules for body:
-  - MUST include {{product_name}} at least once
-  - MUST include the site domain from {{url}} exactly once (no https://, no UTM, no "link in bio")
-  - No hashtags, no "check out my startup", no markdown title line (title field is separate)
-  - Never invent features beyond PRODUCT Summary
+- post_ideas.outline: 3–4 short bullets; one MUST mention {{product_name}}
+- post_ideas.body: FULL Reddit post body ready to paste (NOT a numbered outline). Max 160 words.
+  Structure: hook → insight → how {{product_name}} fits (REQUIRED: name + domain from {{url}} once) → takeaway → question.
+  No hashtags, no markdown title, no invented features.
 
 JSON schema:
 {

@@ -62,23 +62,149 @@ class GrowthReport(BaseModel):
     post_ideas: list[PostIdeaOut] = Field(default_factory=list)
 
 
-def _format_hits(hits: list[DiscoveredThread]) -> str:
+def _format_hits(hits: list[DiscoveredThread], *, limit: int = 18) -> str:
     blocks = []
-    for i, h in enumerate(hits[:30], 1):
+    for i, h in enumerate(hits[:limit], 1):
         date_line = f"\n   Date: {h.date}" if h.date else ""
+        snippet = (h.snippet or "")[:160]
+        title = (h.title or "")[:140]
         blocks.append(
-            f"{i}. [{h.source}] {h.title}\n   URL: {h.url}\n   Snippet: {h.snippet}{date_line}\n   Found via: {h.query}"
+            f"{i}. [{h.source}] {title}\n   URL: {h.url}\n   Snippet: {snippet}{date_line}\n   Found via: {h.query}"
         )
     return "\n\n".join(blocks)
 
 
-def _parse_json(raw: str) -> dict:
+def _strip_code_fences(raw: str) -> str:
     text = raw.strip()
     if text.startswith("```"):
-        text = text.split("```")[1]
+        text = text.split("```", 2)[1]
         if text.startswith("json"):
             text = text[4:]
-    return json.loads(text)
+        text = text.strip()
+        if text.endswith("```"):
+            text = text[:-3].strip()
+    return text
+
+
+def _extract_json_object(text: str) -> str:
+    """Best-effort slice from first {{ to last }}."""
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        return text[start : end + 1]
+    return text
+
+
+def _repair_truncated_json(text: str) -> str:
+    """Close open strings/brackets when the model hits max_tokens mid-JSON."""
+    s = text.rstrip()
+    if not s:
+        return s
+
+    # If we died mid-string, close the quote
+    in_string = False
+    escape = False
+    for ch in s:
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+    if in_string:
+        s += '"'
+
+    # Drop a trailing comma before we close structures
+    s = s.rstrip()
+    if s.endswith(","):
+        s = s[:-1]
+
+    # Balance braces / brackets
+    opens_curly = s.count("{") - s.count("}")
+    opens_square = s.count("[") - s.count("]")
+    if opens_square > 0:
+        s += "]" * opens_square
+    if opens_curly > 0:
+        s += "}" * opens_curly
+    return s
+
+
+def _parse_json(raw: str) -> dict:
+    text = _strip_code_fences(raw)
+    candidates = [text, _extract_json_object(text), _repair_truncated_json(_extract_json_object(text))]
+    last_err: Exception | None = None
+    for cand in candidates:
+        try:
+            data = json.loads(cand)
+            if isinstance(data, dict):
+                return data
+        except Exception as exc:  # noqa: BLE001 — try next candidate
+            last_err = exc
+            continue
+    raise json.JSONDecodeError(
+        str(last_err) if last_err else "Unable to parse growth JSON",
+        text,
+        0,
+    )
+
+
+def _coerce_report_data(data: dict, product: dict[str, str]) -> dict:
+    """Fill missing fields so partial / repaired JSON can still validate."""
+    out = dict(data)
+    out.setdefault("product_name", product.get("product_name") or "Product")
+    out.setdefault("niche_label", product.get("niche_label") or "")
+    out.setdefault("product_summary", product.get("product_summary") or "")
+    out.setdefault("audience", product.get("audience") or "")
+    out.setdefault("subreddits", [])
+    out.setdefault("threads", [])
+    out.setdefault("post_ideas", [])
+
+    threads = []
+    for t in out.get("threads") or []:
+        if not isinstance(t, dict):
+            continue
+        threads.append({
+            "title": str(t.get("title") or "Untitled thread")[:300],
+            "url": str(t.get("url") or ""),
+            "source": str(t.get("source") or "reddit"),
+            "snippet": str(t.get("snippet") or "")[:500],
+            "date": str(t.get("date") or ""),
+            "intent_type": str(t.get("intent_type") or "discussion"),
+            "match_reason": str(t.get("match_reason") or "")[:300],
+            "relevance_score": max(0, min(100, int(t.get("relevance_score") or 50))),
+            "suggested_reply": str(t.get("suggested_reply") or "")[:2500],
+            "promo_risk": str(t.get("promo_risk") or "medium"),
+        })
+    out["threads"] = [t for t in threads if t["url"] or t["title"]]
+
+    posts = []
+    for p in out.get("post_ideas") or []:
+        if not isinstance(p, dict):
+            continue
+        outline = p.get("outline") or []
+        if not isinstance(outline, list):
+            outline = []
+        posts.append({
+            "title": str(p.get("title") or "Post idea")[:300],
+            "hook": str(p.get("hook") or "")[:500],
+            "outline": [str(x)[:300] for x in outline][:8],
+            "body": str(p.get("body") or "")[:4000],
+            "target_community": str(p.get("target_community") or "r/SaaS")[:80],
+            "based_on_trend": str(p.get("based_on_trend") or "")[:300],
+        })
+    out["post_ideas"] = posts
+
+    subs = []
+    for s in out.get("subreddits") or []:
+        if not isinstance(s, dict):
+            continue
+        name = str(s.get("name") or "").strip()
+        if name:
+            subs.append({"name": name[:80], "reason": str(s.get("reason") or "")[:300]})
+    out["subreddits"] = subs
+    return out
 
 
 def infer_product_context(
@@ -371,6 +497,49 @@ def _attach_dates_and_prefer_recent(
     return report.model_copy(update={"threads": chosen})
 
 
+def _build_growth_prompt(
+    site: SiteContext,
+    product: dict[str, str],
+    hits: list[DiscoveredThread],
+    *,
+    thread_count: int,
+    post_idea_count: int,
+    hit_limit: int,
+) -> str:
+    template = _PROMPT_PATH.read_text()
+    return (
+        template
+        .replace("{{url}}", site.url)
+        .replace("{{product_name}}", product["product_name"])
+        .replace("{{niche_label}}", product["niche_label"])
+        .replace("{{product_summary}}", product["product_summary"])
+        .replace("{{audience}}", product["audience"])
+        .replace("{{hit_count}}", str(min(len(hits), hit_limit)))
+        .replace("{{hits}}", _format_hits(hits, limit=hit_limit))
+        .replace("{{thread_count}}", str(thread_count))
+        .replace("{{post_idea_count}}", str(post_idea_count))
+    )
+
+
+def _call_growth_model(
+    client: anthropic.Anthropic,
+    prompt: str,
+    *,
+    max_tokens: int,
+) -> tuple[str, str | None]:
+    response = client.messages.create(
+        model=_MODEL,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = ""
+    if response.content:
+        block = response.content[0]
+        text = getattr(block, "text", None) or str(block)
+    stop = getattr(response, "stop_reason", None)
+    return text.strip(), stop
+
+
 def analyze_growth(
     site: SiteContext,
     product: dict[str, str],
@@ -386,29 +555,52 @@ def analyze_growth(
     # Feed model the freshest hits first
     hits = sort_hits_by_recency(hits)
 
-    template = _PROMPT_PATH.read_text()
-    prompt = (
-        template
-        .replace("{{url}}", site.url)
-        .replace("{{product_name}}", product["product_name"])
-        .replace("{{niche_label}}", product["niche_label"])
-        .replace("{{product_summary}}", product["product_summary"])
-        .replace("{{audience}}", product["audience"])
-        .replace("{{hit_count}}", str(len(hits)))
-        .replace("{{hits}}", _format_hits(hits))
-    )
+    # Full → compact retry if JSON truncates (common with long reply/post bodies)
+    attempts = [
+        {"thread_count": 7, "post_idea_count": 3, "hit_limit": 16, "max_tokens": 12288},
+        {"thread_count": 5, "post_idea_count": 2, "hit_limit": 12, "max_tokens": 8192},
+    ]
 
-    response = client.messages.create(
-        model=_MODEL,
-        max_tokens=8192,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    last_error: Exception | None = None
+    last_raw = ""
 
-    try:
-        data = _parse_json(response.content[0].text.strip())
-        report = GrowthReport(**data)
-        report = _attach_dates_and_prefer_recent(report, hits)
-        return _ensure_product_mentions(report, site.url)
-    except (json.JSONDecodeError, ValidationError) as exc:
-        raw = response.content[0].text.strip()[:500]
-        raise ValueError(f"Claude returned invalid growth JSON: {exc}\n\n{raw}") from exc
+    for i, cfg in enumerate(attempts):
+        prompt = _build_growth_prompt(
+            site,
+            product,
+            hits,
+            thread_count=cfg["thread_count"],
+            post_idea_count=cfg["post_idea_count"],
+            hit_limit=cfg["hit_limit"],
+        )
+        if i > 0:
+            prompt += (
+                "\n\nIMPORTANT RETRY: Previous response was truncated/invalid JSON. "
+                "Return SMALLER valid JSON only. Shorter replies (≤70 words). "
+                "Post bodies ≤120 words. No markdown."
+            )
+
+        try:
+            raw, stop_reason = _call_growth_model(
+                client, prompt, max_tokens=cfg["max_tokens"]
+            )
+            last_raw = raw
+            data = _coerce_report_data(_parse_json(raw), product)
+            report = GrowthReport(**data)
+
+            # Empty threads after repair → try again
+            if not report.threads and i < len(attempts) - 1:
+                last_error = ValueError("Parsed growth JSON had zero threads")
+                continue
+
+            report = _attach_dates_and_prefer_recent(report, hits)
+            return _ensure_product_mentions(report, site.url)
+        except (json.JSONDecodeError, ValidationError, ValueError, anthropic.APIError) as exc:
+            last_error = exc
+            # If truncated, next attempt is smaller; otherwise still retry once
+            continue
+
+    preview = (last_raw or "")[:500]
+    raise ValueError(
+        f"Claude returned invalid growth JSON: {last_error}\n\n{preview}"
+    ) from last_error
