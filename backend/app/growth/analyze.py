@@ -40,6 +40,7 @@ class PostIdeaOut(BaseModel):
     title: str
     hook: str
     outline: list[str]
+    body: str = ""
     target_community: str
     based_on_trend: str
 
@@ -112,28 +113,49 @@ def _domain_label(url: str) -> str:
         return url
 
 
+def _compose_post_body(idea: PostIdeaOut) -> str:
+    """Fallback body when the model only returns outline bullets."""
+    parts: list[str] = []
+    hook = (idea.hook or "").strip()
+    if hook:
+        parts.append(hook)
+    outline = [o.strip() for o in (idea.outline or []) if o and o.strip()]
+    if outline:
+        if parts:
+            parts.append("")
+        for i, line in enumerate(outline, 1):
+            parts.append(f"{i}. {line}")
+    parts.append("")
+    parts.append("Curious what others here have found works — happy to dig into comments.")
+    return "\n".join(parts).strip()
+
+
 def _ensure_product_mentions(report: GrowthReport, site_url: str) -> GrowthReport:
     """Low promo_risk drafts must name the product; patch if the model omitted it."""
     name = (report.product_name or "").strip()
-    if not name:
-        return report
-
     domain = _domain_label(site_url)
     name_l = name.lower()
-    patched: list[ThreadOut] = []
+    patched_threads: list[ThreadOut] = []
 
     for t in report.threads:
         reply = (t.suggested_reply or "").strip()
         risk = (t.promo_risk or "medium").lower()
-        if risk == "low" and reply and name_l not in reply.lower():
+        if name and risk == "low" and reply and name_l not in reply.lower():
             mention = (
                 f"I've been using {name} ({domain}) for this exact problem — "
                 f"it helped me get a clearer starting point instead of guessing."
             )
             reply = f"{reply.rstrip()}\n\n{mention}"
-        patched.append(t.model_copy(update={"suggested_reply": reply}))
+        patched_threads.append(t.model_copy(update={"suggested_reply": reply}))
 
-    return report.model_copy(update={"threads": patched})
+    patched_posts: list[PostIdeaOut] = []
+    for p in report.post_ideas:
+        body = (p.body or "").strip()
+        if not body:
+            body = _compose_post_body(p)
+        patched_posts.append(p.model_copy(update={"body": body}))
+
+    return report.model_copy(update={"threads": patched_threads, "post_ideas": patched_posts})
 
 
 def analyze_growth(

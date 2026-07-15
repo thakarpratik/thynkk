@@ -33,6 +33,10 @@ Rules:
 - Never invent features. Use only PRODUCT Name/Summary above.
 - post_ideas: 3-5 original posts the founder could write (not copies of existing threads)
 - target_community: subreddit or Quora topic name (e.g. r/SaaS)
+- post_ideas.body: FULL Reddit post body ready to copy-paste into the subreddit (NOT an outline).
+  Write 150–350 words in natural founder voice. Open with the hook energy, expand each outline point into real paragraphs,
+  end with a genuine question to invite comments. Soft product mention ({{product_name}} / domain) only once near the end if natural —
+  never a launch pitch. No hashtags, no "Link in bio", no markdown title line (title is separate).
 
 JSON schema:
 {
@@ -56,6 +60,7 @@ JSON schema:
     "title": "string",
     "hook": "string",
     "outline": ["bullet 1", "bullet 2"],
+    "body": "full copy-paste ready post body",
     "target_community": "string",
     "based_on_trend": "string"
   }]

@@ -260,6 +260,7 @@ interface ApiPostIdea {
   title: string;
   hook: string;
   outline: string[];
+  body?: string;
   target_community: string;
   based_on_trend: string;
   locked?: boolean;
@@ -297,10 +298,18 @@ function toGrowthThread(t: ApiGrowthThread): GrowthThread {
 }
 
 function toPostIdea(p: ApiPostIdea): PostIdea {
+  const outline = p.outline || [];
+  const body =
+    (p.body || "").trim() ||
+    [p.hook, "", ...outline.map((line, i) => `${i + 1}. ${line}`)]
+      .filter((line, i, arr) => !(line === "" && i === arr.length - 1))
+      .join("\n")
+      .trim();
   return {
     title: p.title,
     hook: p.hook,
-    outline: p.outline,
+    outline,
+    body,
     targetCommunity: p.target_community,
     basedOnTrend: p.based_on_trend,
     locked: p.locked,

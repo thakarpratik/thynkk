@@ -96,9 +96,12 @@ def gate_growth_report(report: dict, is_paid: bool) -> dict:
 
     gated_posts = []
     for p in post_ideas[:FREE_GROWTH_POST_IDEA_LIMIT]:
+        body = p.get("body", "") or ""
+        teaser = body[:160] + ("…" if len(body) > 160 else "")
         gated_posts.append({
             **p,
             "outline": p.get("outline", [])[:1],
+            "body": teaser,
             "locked": True,
         })
 

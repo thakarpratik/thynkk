@@ -128,6 +128,7 @@ class PostIdeaOut(BaseModel):
     title: str
     hook: str
     outline: list[str]
+    body: str = ""
     target_community: str
     based_on_trend: str
     locked: bool = False

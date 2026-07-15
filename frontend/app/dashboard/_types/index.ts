@@ -55,6 +55,8 @@ export interface PostIdea {
   title: string;
   hook: string;
   outline: string[];
+  /** Full Reddit post body ready to paste (title is separate). */
+  body: string;
   targetCommunity: string;
   basedOnTrend: string;
   locked?: boolean;

@@ -12,7 +12,7 @@ export const PACK_FEATURE_LIST = [
   PACK_SCANS_LABEL,
   "All ranked threads in every report",
   "Full copy-ready reply drafts",
-  "All post ideas with full outlines",
+  "All post ideas with copy-ready drafts",
   "Promo-risk scoring per thread",
   "Re-read old reports anytime — free",
 ] as const;
@@ -21,7 +21,7 @@ export const FREE_FEATURE_LIST = [
   `${FREE_SCANS_LIFETIME} site scan (lifetime)`,
   "Top 3 Reddit threads to join",
   "Reply draft preview (first 120 chars)",
-  "1 post idea with outline teaser",
+  "1 post idea with draft teaser",
   "Communities to watch",
 ] as const;
 
