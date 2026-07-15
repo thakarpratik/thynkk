@@ -19,8 +19,18 @@ Rules:
 - Prefer: questions, recommendations, "how do I", "what tool", complaints seeking solutions
 - Deprioritize: memes, drama, unrelated politics, megathreads with 50+ brands already, ancient dead threads
 - Return 5-10 threads when {{hit_count}} >= 5; never return only 1-2 threads if more viable hits exist
-- suggested_reply: helpful first, product mention only if natural (last line or when asked for tools)
-- promo_risk: low | medium | high based on how salesy the draft sounds
+- promo_risk is about THREAD FIT for mentioning this product (not how salesy the writing sounds):
+  - low = recommendations / "what tool" / "how do I" / seeking solutions → SAFE to name the product
+  - medium = general discussion → soft, optional mention only
+  - high = anti-promo culture, pure vent, or product is a bad fit → do NOT name the product
+- suggested_reply MUST follow promo_risk:
+  - Always lead with genuine help (empathy + specific advice). Never open with a pitch.
+  - low: MUST mention product by name ({{product_name}}) in 1 short natural sentence near the end.
+    Optionally add the site ({{url}} domain only, no UTM spam) once. Frame as "what worked for me" / "I use X for …" not "check out my product".
+    Example pattern: helpful answer → then "I've been using {{product_name}} for [specific related use] which helped me [outcome]."
+  - medium: helpful answer only, or at most a vague category mention without a hard sell; product name optional and brief
+  - high: pure value only — zero product name, zero URL
+- Never invent features. Use only PRODUCT Name/Summary above.
 - post_ideas: 3-5 original posts the founder could write (not copies of existing threads)
 - target_community: subreddit or Quora topic name (e.g. r/SaaS)
 

@@ -104,6 +104,38 @@ Page text: {site.text_snippet[:1200]}"""
     }
 
 
+def _domain_label(url: str) -> str:
+    try:
+        host = url.split("//", 1)[-1].split("/", 1)[0].lower()
+        return host[4:] if host.startswith("www.") else host
+    except Exception:
+        return url
+
+
+def _ensure_product_mentions(report: GrowthReport, site_url: str) -> GrowthReport:
+    """Low promo_risk drafts must name the product; patch if the model omitted it."""
+    name = (report.product_name or "").strip()
+    if not name:
+        return report
+
+    domain = _domain_label(site_url)
+    name_l = name.lower()
+    patched: list[ThreadOut] = []
+
+    for t in report.threads:
+        reply = (t.suggested_reply or "").strip()
+        risk = (t.promo_risk or "medium").lower()
+        if risk == "low" and reply and name_l not in reply.lower():
+            mention = (
+                f"I've been using {name} ({domain}) for this exact problem — "
+                f"it helped me get a clearer starting point instead of guessing."
+            )
+            reply = f"{reply.rstrip()}\n\n{mention}"
+        patched.append(t.model_copy(update={"suggested_reply": reply}))
+
+    return report.model_copy(update={"threads": patched})
+
+
 def analyze_growth(
     site: SiteContext,
     product: dict[str, str],
@@ -136,7 +168,8 @@ def analyze_growth(
 
     try:
         data = _parse_json(response.content[0].text.strip())
-        return GrowthReport(**data)
+        report = GrowthReport(**data)
+        return _ensure_product_mentions(report, site.url)
     except (json.JSONDecodeError, ValidationError) as exc:
         raw = response.content[0].text.strip()[:500]
         raise ValueError(f"Claude returned invalid growth JSON: {exc}\n\n{raw}") from exc
