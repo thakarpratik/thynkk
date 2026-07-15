@@ -113,7 +113,7 @@ def _domain_label(url: str) -> str:
         return url
 
 
-def _compose_post_body(idea: PostIdeaOut) -> str:
+def _compose_post_body(idea: PostIdeaOut, product_name: str, domain: str) -> str:
     """Fallback body when the model only returns outline bullets."""
     parts: list[str] = []
     hook = (idea.hook or "").strip()
@@ -125,13 +125,52 @@ def _compose_post_body(idea: PostIdeaOut) -> str:
             parts.append("")
         for i, line in enumerate(outline, 1):
             parts.append(f"{i}. {line}")
+    label = product_name or domain
+    parts.append("")
+    parts.append(
+        f"What finally helped me stop guessing was running myself through {label} "
+        f"({domain}) — seeing scores side by side made the weak spot obvious."
+    )
     parts.append("")
     parts.append("Curious what others here have found works — happy to dig into comments.")
     return "\n".join(parts).strip()
 
 
+def _text_has_product(text: str, product_name: str, domain: str) -> bool:
+    lower = text.lower()
+    if domain and domain.lower() in lower:
+        return True
+    name = (product_name or "").strip()
+    if not name:
+        return False
+    if name.lower() in lower:
+        return True
+    # Loose match: "Gut Gauge" vs "gutgauge" / "GutGuage"
+    compact = "".join(ch for ch in name.lower() if ch.isalnum())
+    text_compact = "".join(ch for ch in lower if ch.isalnum())
+    return bool(compact) and compact in text_compact
+
+
+def _promote_post_body(body: str, product_name: str, domain: str) -> str:
+    """Ensure create-new-post bodies mention product name + domain."""
+    label = product_name.strip() or domain
+    mention = (
+        f"What finally clicked for me was scoring it properly with {label} "
+        f"({domain}) — once I saw the categories side by side, the real bottleneck "
+        f"was obvious instead of guessing from random advice."
+    )
+    text = body.rstrip()
+    # Prefer inserting before a trailing question if present
+    lines = text.split("\n")
+    if lines and lines[-1].strip().endswith("?"):
+        head = "\n".join(lines[:-1]).rstrip()
+        question = lines[-1].strip()
+        return f"{head}\n\n{mention}\n\n{question}".strip()
+    return f"{text}\n\n{mention}"
+
+
 def _ensure_product_mentions(report: GrowthReport, site_url: str) -> GrowthReport:
-    """Low promo_risk drafts must name the product; patch if the model omitted it."""
+    """Reply drafts (low risk) + create-new-post drafts must promote the product."""
     name = (report.product_name or "").strip()
     domain = _domain_label(site_url)
     name_l = name.lower()
@@ -140,7 +179,7 @@ def _ensure_product_mentions(report: GrowthReport, site_url: str) -> GrowthRepor
     for t in report.threads:
         reply = (t.suggested_reply or "").strip()
         risk = (t.promo_risk or "medium").lower()
-        if name and risk == "low" and reply and name_l not in reply.lower():
+        if name and risk == "low" and reply and name_l not in reply.lower() and domain.lower() not in reply.lower():
             mention = (
                 f"I've been using {name} ({domain}) for this exact problem — "
                 f"it helped me get a clearer starting point instead of guessing."
@@ -152,8 +191,19 @@ def _ensure_product_mentions(report: GrowthReport, site_url: str) -> GrowthRepor
     for p in report.post_ideas:
         body = (p.body or "").strip()
         if not body:
-            body = _compose_post_body(p)
-        patched_posts.append(p.model_copy(update={"body": body}))
+            body = _compose_post_body(p, name, domain)
+        elif not _text_has_product(body, name, domain):
+            body = _promote_post_body(body, name, domain)
+
+        outline = list(p.outline or [])
+        outline_text = " ".join(outline)
+        if outline and not _text_has_product(outline_text, name, domain):
+            label = name or domain
+            outline = outline + [
+                f"Share how {label} ({domain}) made the weak spot obvious — without turning the post into an ad"
+            ]
+
+        patched_posts.append(p.model_copy(update={"body": body, "outline": outline}))
 
     return report.model_copy(update={"threads": patched_threads, "post_ideas": patched_posts})
 
