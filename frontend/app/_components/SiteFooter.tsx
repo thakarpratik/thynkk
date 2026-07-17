@@ -11,15 +11,32 @@ export function SiteFooter() {
             <p className="text-xs text-[#475569] mt-2 leading-relaxed">
               Skip hours of Reddit scanning. Find threads, draft replies, get real traffic.
             </p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://buildlist.io/badge.svg"
-              alt="Featured on Buildlist"
-              height={40}
-              width={160}
-              className="mt-4 opacity-90"
-              style={{ height: 40, width: "auto" }}
-            />
+            <div className="mt-4 flex flex-col gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://buildlist.io/badge.svg"
+                alt="Featured on Buildlist"
+                height={40}
+                width={160}
+                className="opacity-90"
+                style={{ height: 40, width: "auto" }}
+              />
+              <a
+                href="https://theresanaiforthat.com/ai/thynkk/?ref=featured&v=11787265"
+                target="_blank"
+                rel="nofollow noopener noreferrer"
+                className="inline-block opacity-90 hover:opacity-100 transition-opacity"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://media.theresanaiforthat.com/featured-on-taaft.png?width=600"
+                  alt="Featured on There's An AI For That"
+                  width={300}
+                  height={86}
+                  className="h-auto w-[180px] sm:w-[200px]"
+                />
+              </a>
+            </div>
           </div>
           <div>
             <p className="text-xs font-mono text-[#94A3B8] uppercase tracking-widest mb-3">Product</p>
