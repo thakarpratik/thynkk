@@ -5,18 +5,19 @@ import { SiteFooter } from "./_components/SiteFooter";
 import { PlanCTA } from "./_components/PlanCTA";
 import { LiveActivity } from "./_components/LiveActivity";
 import { HeroCTA } from "./_components/HeroCTA";
+import { HeroSaturationInput } from "./_components/HeroSaturationInput";
 import { DemoVideo } from "./_components/DemoVideo";
 import { PACK_FEATURE_LIST, PACK_NAME, PACK_PRICE_USD } from "./_lib/pricing";
 
 export const metadata: Metadata = {
   title: "Thynkk — First Reddit traffic for new websites",
   description:
-    "Just launched and invisible? Thynkk finds niche Reddit threads where people already want what you sell — and drafts replies so you get intent traffic without ads or waiting on SEO.",
+    "Just launched and invisible? Thynkk finds niche Reddit threads where people already want what you sell — and drafts replies so you get intent traffic without ads or waiting on SEO. Still choosing a niche? Calculate a saturation go / no-go score.",
   alternates: { canonical: "https://thynkk.co" },
   openGraph: {
     title: "Thynkk — First Reddit traffic for new websites",
     description:
-      "Paste your URL. Get niche Reddit threads + copy-ready replies. Intent traffic for launches — without the scroll.",
+      "Paste your URL for Reddit threads — or calculate niche saturation before you build.",
     url: "https://thynkk.co",
   },
 };
@@ -27,11 +28,11 @@ export default function LandingPage() {
       <SiteNav />
 
       {/* —— HERO —— */}
-      <section className="pt-40 pb-24 px-6">
+      <section className="pt-40 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <LiveActivity />
           <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">
-            Intent traffic for new sites &amp; launches
+            Find demand · Or decide if the niche is worth it
           </p>
           <h1 className="font-mono text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight">
             Your first visitors
@@ -39,18 +40,24 @@ export default function LandingPage() {
             <span className="text-gradient">won&apos;t come from Google.</span>
           </h1>
           <p className="text-xl text-[#94A3B8] max-w-2xl mx-auto mb-4 leading-relaxed">
-            SEO takes months. Ads burn cash. On Reddit, people are{" "}
-            <span className="text-[#F8FAFC]">already asking</span> for tools like yours —
-            in niche threads most founders never find.
+            Already shipped? Find niche Reddit threads. Still choosing? Calculate a
+            saturation score and make a go / no-go call.
           </p>
-          <p className="text-base text-[#64748B] max-w-xl mx-auto mb-8 leading-relaxed">
-            Paste your website. Thynkk finds those threads, ranks them, and drafts what to
-            reply — so new sites get traffic in days, not months.
-          </p>
-          <HeroCTA />
-          <p className="mt-4 text-xs text-[#64748B] font-mono">
-            Free scan · ~60 seconds · No ad budget required
-          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-2">
+            <a
+              href="#explore-reddit"
+              className="bg-[#6366F1] hover:bg-[#4F46E5] text-white px-6 py-3 rounded-md font-semibold text-sm transition-all"
+              style={{ boxShadow: "0 0 24px rgba(99,102,241,0.35)" }}
+            >
+              I already shipped
+            </a>
+            <a
+              href="#check-saturation"
+              className="border border-[#1E293B] hover:border-[#22C55E] text-[#F8FAFC] px-6 py-3 rounded-md font-semibold text-sm transition-all"
+            >
+              Still picking a niche
+            </a>
+          </div>
           <p className="mt-6">
             <a
               href="#see-how-it-works"
@@ -59,10 +66,56 @@ export default function LandingPage() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#334155] bg-[#0E1223] text-[#6366F1]">
                 ▶
               </span>
-              See how it works
+              See how Reddit scan works
             </a>
           </p>
         </div>
+      </section>
+
+      {/* —— DUAL DOORS —— */}
+      <section className="pb-20 px-6">
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6">
+          {/* Section 1 — Reddit / live site */}
+          <div
+            id="explore-reddit"
+            className="scroll-mt-28 bg-[#0E1223] border border-[#6366F1]/40 rounded-xl p-6 sm:p-8"
+          >
+            <p className="text-[10px] font-mono text-[#6366F1] uppercase tracking-widest mb-2">
+              1 · Site is live
+            </p>
+            <h2 className="font-mono text-xl sm:text-2xl font-bold mb-2">
+              Explore Reddit
+            </h2>
+            <p className="text-sm text-[#94A3B8] leading-relaxed mb-6">
+              Paste your URL. We find niche threads, rank them, and draft replies —
+              traffic in days, not months of SEO.
+            </p>
+            <HeroCTA />
+          </div>
+
+          {/* Section 2 — Saturation / pre-launch */}
+          <div
+            id="check-saturation"
+            className="scroll-mt-28 bg-[#0E1223] border border-[#22C55E]/35 rounded-xl p-6 sm:p-8"
+          >
+            <p className="text-[10px] font-mono text-[#22C55E] uppercase tracking-widest mb-2">
+              2 · Still choosing
+            </p>
+            <h2 className="font-mono text-xl sm:text-2xl font-bold mb-2">
+              Saturation Score
+            </h2>
+            <p className="text-sm text-[#94A3B8] leading-relaxed mb-6">
+              Enter an idea or niche. Get a 0–100 score and a clear{" "}
+              <span className="text-[#F8FAFC]">Go / Caution / No-go</span> before you
+              build.
+            </p>
+            <HeroSaturationInput />
+          </div>
+        </div>
+        <p className="text-center text-xs text-[#64748B] mt-6 font-mono max-w-xl mx-auto">
+          Same founder journey. Different stage. Reddit scan does not show idea
+          saturation — and saturation does not require a live URL.
+        </p>
       </section>
 
       {/* —— DEMO —— */}
@@ -348,15 +401,15 @@ export default function LandingPage() {
             <div className="bg-[#0E1223] border border-[#1E293B] rounded-lg p-8">
               <h3 className="font-mono font-bold text-xl mb-1">Free</h3>
               <p className="text-[#94A3B8] text-sm mb-6">
-                See if Reddit has demand for your site.
+                One complete report for your site.
               </p>
               <div className="font-mono text-4xl font-bold mb-8">$0</div>
               <ul className="space-y-3 text-sm text-[#94A3B8] mb-8">
                 {[
-                  "1 site scan",
-                  "Top 3 niche threads to join",
-                  "1 post idea",
-                  "Reply draft preview",
+                  "1 full site scan",
+                  "All ranked threads + communities",
+                  "Full copy-ready reply drafts",
+                  "All post ideas with drafts",
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <svg

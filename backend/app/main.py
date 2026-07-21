@@ -76,6 +76,7 @@ from app.api.billing import router as billing_router
 from app.api.reddit_health import router as reddit_health_router
 from app.api.growth_scans import router as growth_scans_router
 from app.api.waitlist import router as waitlist_router
+from app.api.saturation import router as saturation_router
 
 app.include_router(scans_router)
 app.include_router(growth_scans_router)
@@ -86,6 +87,7 @@ app.include_router(admin_router)
 app.include_router(reddit_health_router)
 app.include_router(billing_router)
 app.include_router(waitlist_router)
+app.include_router(saturation_router)
 
 
 @app.get("/health")
