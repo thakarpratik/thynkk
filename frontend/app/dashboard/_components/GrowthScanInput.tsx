@@ -50,7 +50,7 @@ export function GrowthScanInput({ url, status, quota, onChange, onScan, onUpgrad
             : quota.scan_credits > 0
               ? `${quota.scan_credits} full scan${quota.scan_credits === 1 ? "" : "s"} left`
               : quota.free_available
-                ? "1 free scan available"
+                ? "1 free full scan available"
                 : `${quota.remaining} scan${quota.remaining === 1 ? "" : "s"} left`}
         </p>
       )}

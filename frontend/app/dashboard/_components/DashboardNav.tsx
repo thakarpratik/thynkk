@@ -14,7 +14,7 @@ export function DashboardNav({ scanCredits, quota, onUpgrade }: DashboardNavProp
     if (scanCredits > 0) {
       return `${scanCredits} full scan${scanCredits === 1 ? "" : "s"} left`;
     }
-    if (quota.free_available) return "1 free scan";
+    if (quota.free_available) return "1 free full scan";
     return "No scans left";
   })();
 

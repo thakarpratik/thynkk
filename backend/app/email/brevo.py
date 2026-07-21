@@ -151,3 +151,81 @@ def send_waitlist_joined_async(to_email: str, position: int) -> None:
 
 def send_waitlist_admitted_async(to_email: str) -> None:
     _send_async(send_waitlist_admitted, to_email)
+
+
+def send_scan_ready(
+    to_email: str,
+    *,
+    url: str,
+    success: bool,
+    product_name: str = "",
+    scan_id: str = "",
+) -> bool:
+    """Notify user that a growth scan finished (success or failure)."""
+    dashboard = f"{_app_url()}/dashboard"
+    label = (product_name or "").strip() or url
+    if success:
+        subject = f"Your Thynkk scan is ready — {label}"
+        text = (
+            f"Your growth scan for {url} is ready.\n\n"
+            f"Open your dashboard to copy reply drafts and post ideas:\n{dashboard}\n"
+        )
+        if scan_id:
+            text += f"\nScan id: {scan_id}\n"
+        html = _wrap_html(
+            subject,
+            f"""
+          <h1 style="margin:0 0 12px;font-family:monospace;font-size:22px;color:#F8FAFC;">Scan ready</h1>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#94A3B8;">
+            We finished analyzing <strong style="color:#F8FAFC;">{url}</strong>
+            {" for <strong style='color:#F8FAFC;'>" + product_name + "</strong>" if product_name else ""}.
+          </p>
+          <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#94A3B8;">
+            Ranked Reddit threads and copy-paste reply drafts are waiting in your dashboard.
+          </p>
+          <a href="{dashboard}" style="display:inline-block;background:#6366F1;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:14px;padding:14px 28px;border-radius:8px;">
+            Open results
+          </a>
+          <p style="margin:20px 0 0;font-size:12px;color:#64748B;">You asked to be notified when this scan finished.</p>
+        """,
+        )
+    else:
+        subject = f"Thynkk scan didn’t finish — {label}"
+        text = (
+            f"Your growth scan for {url} didn’t complete successfully.\n\n"
+            f"Open the dashboard to try again:\n{dashboard}\n"
+        )
+        html = _wrap_html(
+            subject,
+            f"""
+          <h1 style="margin:0 0 12px;font-family:monospace;font-size:22px;color:#F8FAFC;">Scan didn’t finish</h1>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#94A3B8;">
+            We couldn’t complete the scan for <strong style="color:#F8FAFC;">{url}</strong>.
+          </p>
+          <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#94A3B8;">
+            Open your dashboard and try again — or use a site with a clearer product description.
+          </p>
+          <a href="{dashboard}" style="display:inline-block;background:#6366F1;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:14px;padding:14px 28px;border-radius:8px;">
+            Back to dashboard
+          </a>
+        """,
+        )
+    return _send_email(to_email=to_email, subject=subject, html=html, text=text)
+
+
+def send_scan_ready_async(
+    to_email: str,
+    *,
+    url: str,
+    success: bool,
+    product_name: str = "",
+    scan_id: str = "",
+) -> None:
+    _send_async(
+        send_scan_ready,
+        to_email,
+        url=url,
+        success=success,
+        product_name=product_name,
+        scan_id=scan_id,
+    )

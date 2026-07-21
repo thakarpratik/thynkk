@@ -17,21 +17,21 @@ import {
 
 export const metadata: Metadata = {
   title: "Pricing — Thynkk Growth Engine",
-  description: `Free: ${FREE_SCANS_LIFETIME} site scan. ${PACK_NAME} ${PACK_PRICE_LABEL}: ${PACK_SCANS} full scans, reply drafts, post ideas.`,
+  description: `Free: ${FREE_SCANS_LIFETIME} full site scan. ${PACK_NAME} ${PACK_PRICE_LABEL}: ${PACK_SCANS} more full scans.`,
   alternates: { canonical: "https://thynkk.co/pricing" },
   openGraph: {
     title: "Thynkk Pricing — Reddit traffic without the grind",
-    description: `Start with 1 free growth scan. ${PACK_NAME} unlocks ${PACK_SCANS} full reports — pay once, no subscription.`,
+    description: `Start with 1 free full growth scan. ${PACK_NAME} adds ${PACK_SCANS} more — pay once, no subscription.`,
     url: "https://thynkk.co/pricing",
   },
 };
 
 const COMPARISON = [
-  { feature: "Site scans", free: "1 total", pro: `${PACK_SCANS} per pack` },
-  { feature: "Threads per scan", free: "Top 3", pro: "All ranked" },
-  { feature: "Reply drafts", free: "Preview only", pro: "Full text + copy" },
-  { feature: "Post ideas", free: "1 teaser", pro: "All ideas" },
-  { feature: "Promo-risk scores", free: "—", pro: "✓" },
+  { feature: "Site scans", free: "1 full scan", pro: `${PACK_SCANS} per pack` },
+  { feature: "Threads per scan", free: "All ranked", pro: "All ranked" },
+  { feature: "Reply drafts", free: "Full text + copy", pro: "Full text + copy" },
+  { feature: "Post ideas", free: "All ideas", pro: "All ideas" },
+  { feature: "Promo-risk scores", free: "✓", pro: "✓" },
   { feature: "Billing", free: "Free forever", pro: "One-time $19" },
 ];
 
@@ -71,7 +71,7 @@ export default function PricingPage() {
         <p className="text-center text-xs font-mono text-[#6366F1] mb-3 uppercase tracking-widest">Pricing</p>
         <h1 className="font-mono text-4xl font-bold text-center mb-4">Pay when you launch. Not every month.</h1>
         <p className="text-center text-[#94A3B8] mb-2 max-w-2xl mx-auto leading-relaxed">
-          One free scan to see the magic. Then buy a Launch Pack when you&apos;re ready for full reports — no subscription.
+          One free full scan — complete threads and drafts. Then buy a Launch Pack when you need more scans — no subscription.
         </p>
         <p className="text-center text-sm text-[#64748B] mb-6 max-w-lg mx-auto">
           {PACK_PER_SCAN} · Failed scans don&apos;t count · Re-read old reports free
@@ -83,9 +83,9 @@ export default function PricingPage() {
         <div className="grid md:grid-cols-2 gap-6 mb-16">
           <div className="bg-[#0E1223] border border-[#1E293B] rounded-xl p-8">
             <h2 className="font-mono font-bold text-xl mb-1">Free</h2>
-            <p className="text-[#94A3B8] text-sm mb-6">Proof it works for your site.</p>
+            <p className="text-[#94A3B8] text-sm mb-6">One complete report for your site.</p>
             <div className="font-mono text-4xl font-bold mb-2">$0</div>
-            <p className="text-xs text-[#64748B] mb-8">{FREE_SCANS_LIFETIME} scan · No credit card</p>
+            <p className="text-xs text-[#64748B] mb-8">{FREE_SCANS_LIFETIME} full scan · No credit card</p>
             <ul className="space-y-3 text-sm text-[#94A3B8] mb-8">
               {FREE_FEATURE_LIST.map((f) => (
                 <li key={f} className="flex items-start gap-2">
@@ -105,7 +105,7 @@ export default function PricingPage() {
               MOST POPULAR
             </div>
             <h2 className="font-mono font-bold text-xl mb-1">{PACK_NAME}</h2>
-            <p className="text-[#94A3B8] text-sm mb-6">Full reports, every reply unlocked.</p>
+            <p className="text-[#94A3B8] text-sm mb-6">More full scans when you need them.</p>
             <div className="font-mono text-4xl font-bold mb-2">
               ${PACK_PRICE_USD}<span className="text-lg text-[#94A3B8] font-normal"> once</span>
             </div>

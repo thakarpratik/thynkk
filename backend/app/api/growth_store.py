@@ -15,6 +15,15 @@ class GrowthScanJob:
     result: dict[str, Any] | None = None
     error: str | None = None
     from_cache: bool = False
+    # Real progress for client UX (not pure client timers)
+    stage: str = "queued"
+    stage_message: str = "Queued…"
+    progress_pct: int = 5
+    # Partial hits after Serper, before Claude finishes drafts
+    partial: dict[str, Any] | None = None
+    # Email when scan completes (optional)
+    notify_email: str | None = None
+    notify_sent: bool = False
 
 
 class GrowthScanStore:

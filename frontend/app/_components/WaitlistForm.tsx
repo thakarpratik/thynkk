@@ -158,7 +158,7 @@ export function WaitlistForm({ source = "homepage", variant = "hero" }: Waitlist
         >
           {isSignedIn ? "Go to dashboard" : "Create account & start scanning"}
         </button>
-        <p className="text-xs text-[#64748B] mt-4">1 free scan included · No credit card</p>
+        <p className="text-xs text-[#64748B] mt-4">1 free full scan · No credit card</p>
       </div>
     );
   }

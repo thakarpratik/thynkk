@@ -82,3 +82,31 @@ export interface GrowthReport {
   fromCache: boolean;
   reportTier: "free" | "full";
 }
+
+/** Early Serper hits shown while Claude writes drafts */
+export interface PartialThread {
+  title: string;
+  url: string;
+  source: string;
+  snippet: string;
+  date: string;
+  query?: string;
+}
+
+export interface GrowthPartial {
+  productName: string;
+  nicheLabel: string;
+  productSummary: string;
+  audience: string;
+  threads: PartialThread[];
+  totalThreads: number;
+  draftsReady: boolean;
+}
+
+export interface GrowthScanProgress {
+  stage: string;
+  stageMessage: string;
+  progressPct: number;
+  partial: GrowthPartial | null;
+  notifyEmail: string | null;
+}

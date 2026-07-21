@@ -17,12 +17,13 @@ export const PACK_FEATURE_LIST = [
   "Re-read old reports anytime — free",
 ] as const;
 
+/** Free = 1 complete report (same depth as paid), then buy packs for more. */
 export const FREE_FEATURE_LIST = [
-  `${FREE_SCANS_LIFETIME} site scan (lifetime)`,
-  "Top 3 Reddit threads to join",
-  "Reply draft preview (first 120 chars)",
-  "1 post idea with draft teaser",
-  "Communities to watch",
+  `${FREE_SCANS_LIFETIME} full site scan (lifetime)`,
+  "All ranked Reddit threads",
+  "Full copy-ready reply drafts",
+  "All post ideas with drafts",
+  "Promo-risk scores + communities",
 ] as const;
 
 // Legacy aliases

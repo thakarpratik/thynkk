@@ -33,7 +33,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-mono font-bold text-lg text-[#F8FAFC] mb-3">3. Free and Paid Tiers</h2>
-            <p>The free tier grants one (1) lifetime scan with limited results. The {PACK_NAME} (${PACK_PRICE_USD} one-time via PayPal) provides {PACK_SCANS} full scan credits. Credits are consumed only on successful fresh scans; cached results and re-reading prior reports do not consume credits. Failed scans do not consume credits. Unused credits do not expire.</p>
+            <p>The free tier grants one (1) lifetime full scan with the complete report (all ranked threads, full reply drafts, and post ideas). The {PACK_NAME} (${PACK_PRICE_USD} one-time via PayPal) provides {PACK_SCANS} additional full scan credits. Credits are consumed only on successful fresh scans; cached results and re-reading prior reports do not consume credits. Failed scans do not consume credits. Unused credits do not expire.</p>
           </section>
 
           <section>

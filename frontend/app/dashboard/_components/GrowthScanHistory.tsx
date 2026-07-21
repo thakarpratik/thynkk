@@ -73,7 +73,7 @@ export function GrowthScanHistory({ history, onRestore, loading }: GrowthScanHis
                   {displayUrl(entry.url)}
                   {" · "}
                   {entry.totalThreads} thread{entry.totalThreads === 1 ? "" : "s"}
-                  {entry.tier === "free" ? " · Free preview" : ""}
+                  {entry.tier === "free" ? " · Free full scan" : ""}
                 </p>
               </div>
               <span className="text-[10px] font-mono text-muted-foreground shrink-0">

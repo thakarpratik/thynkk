@@ -18,6 +18,8 @@ router = APIRouter(prefix="/billing", tags=["billing"])
 
 FREE_THEME_LIMIT = 3
 FREE_RADAR_LIMIT = 3
+# Legacy gated free preview (no longer used for growth scans — free = full report).
+# Kept so older call sites / experiments can still pass is_paid=False.
 FREE_GROWTH_THREAD_LIMIT = 3
 FREE_GROWTH_POST_IDEA_LIMIT = 1
 PACK_PRICE_USD = 19
@@ -69,7 +71,11 @@ def gate_themes_for_plan(themes: list, is_paid: bool) -> list:
 
 
 def gate_growth_report(report: dict, is_paid: bool) -> dict:
-    """Gate growth scan results for free-tier scans."""
+    """Optionally gate growth scan results.
+
+    Product policy: every user gets 1 full free scan (is_paid=True for free allowance).
+    When is_paid is False, returns a teaser subset (legacy / unused by default).
+    """
     threads = report.get("threads", [])
     post_ideas = report.get("post_ideas", [])
     total_threads = len(threads)

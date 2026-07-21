@@ -1,8 +1,9 @@
 """Scan quota — PAYG credits + 1 free lifetime scan.
 
-Free tier:  1 gated scan per account (also tracked per verified email + IP)
+Free tier:  1 full scan per account (also tracked per verified email + IP).
+            Same complete report as paid — not a teaser / gated preview.
 Paid tier:  $19 → 3 credits (CREDITS_PER_PACK), no subscription reset
-Credits burn only on successful fresh (non-cache) full scans.
+Credits burn only on successful fresh (non-cache) paid scans.
 """
 
 import os
@@ -352,7 +353,7 @@ def reserve_scan(
                 status_code=429,
                 detail={
                     "error": "quota_exceeded",
-                    "message": "Free scan already used on this email. Buy a Launch Pack for full reports.",
+                    "message": "Free scan already used on this email. Buy a Launch Pack for more full scans.",
                 },
             )
         return ScanReservation("free", False, account_key, clerk_id, email, ip)
@@ -371,7 +372,7 @@ def reserve_scan(
             "error": "quota_exceeded",
             "scan_credits": credits,
             "free_scan_used": free_used,
-            "message": "No scans left. Buy a Launch Pack ($19) for 3 full scans.",
+            "message": "No scans left. Buy a Launch Pack ($19) for 3 more full scans.",
         },
     )
 

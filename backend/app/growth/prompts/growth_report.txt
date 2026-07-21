@@ -23,51 +23,49 @@ Rules:
 - Deprioritize: memes, drama, unrelated politics, megathreads with 50+ brands already, ancient dead threads
 - Return exactly {{thread_count}} threads (never more). Prefer quality over quantity.
 - When scores are similar, rank newer threads above older ones
-- Keep JSON compact so it never truncates:
-  - suggested_reply: max 90 words
+- Keep JSON compact so it never truncates (speed + reliability):
+  - suggested_reply: max 65 words
   - post_ideas: exactly {{post_idea_count}} items
-  - post_ideas.body: max 160 words (still full prose, not an outline)
-  - post_ideas.outline: 3–4 short bullets
+  - post_ideas.body: max 120 words (still full prose, not an outline)
+  - post_ideas.outline: 3 short bullets
   - snippet / match_reason: one short sentence each
   - Escape all quotes inside strings. No trailing commas. JSON only — no markdown fences, no commentary.
-- promo_risk is about THREAD FIT for mentioning this product (not how salesy the writing sounds):
-  - low = recommendations / "what tool" / "how do I" / seeking solutions → SAFE to name the product
-  - medium = general discussion → soft, optional mention only
-  - high = anti-promo culture, pure vent, or product is a bad fit → do NOT name the product
-- suggested_reply MUST follow promo_risk:
-  - Always lead with genuine help (empathy + specific advice). Never open with a pitch.
-  - low: MUST mention product by name ({{product_name}}) in 1 short natural sentence near the end.
-    Optionally add the site ({{url}} domain only, no UTM spam) once. Frame as "what worked for me" / "I use X for …" not "check out my product".
-    Example pattern: helpful answer → then "I've been using {{product_name}} for [specific related use] which helped me [outcome]."
-  - medium: helpful answer only, or at most a vague category mention without a hard sell; product name optional and brief
-  - high: pure value only — zero product name, zero URL
-- ANTI-AI / ANTI-LOW-EFFORT (critical — Reddit auto-removes AI-sounding comments):
-  Write like a real founder typing on their phone, NOT a LinkedIn coach or marketing blog.
-  DO:
-  - 2–5 short sentences OR one short paragraph + one follow-up line
-  - Reference something specific from THIS thread title/snippet (quote a detail, answer their exact question)
-  - Uneven rhythm: contractions (I'm, don't, it's), maybe one mild hedge ("kinda", "for me", "ymmv")
-  - One concrete tip they can try without your product
-  - Product mention max once, casual, mid/end — never a pitch deck line
-  DO NOT use (instant AI flags):
-  - "Week 1 priority", "underrated for this", "Don't spam", "one great reply beats fifty"
-  - "genuine help", "naturally once", "first real users", "before touching paid ads"
-  - "Here's the thing", "The key is", "At the end of the day", "In today's landscape"
-  - Numbered frameworks, bullet lists, em-dashes used as essay structure
-  - Perfect parallel sentences, corporate polish, motivational slogans
-  - Opening with a general thesis about marketing instead of answering THEM
-  BAD (generic playbook — will get auto-removed):
-  "Week 1 priority: get in front of people who already have the problem... Reddit is underrated... Reply with genuine help... I started using Thynkk..."
-  GOOD (specific, human):
-  "If SEO is at zero, I'd skip launch posts and hunt threads where people already asked for X. I wasted a weekend on the first. Now I paste my URL into Thynkk (thynkk.co) to list those threads + a draft reply so I'm not staring at a blank box. Still edit it so it doesn't sound like a bot though."
-- Never invent features. Use only PRODUCT Name/Summary above.
-- post_ideas: exactly {{post_idea_count}} original posts for the founder's OWN Reddit threads (not replies).
-  Goal: value-first storytelling that still promotes {{product_name}}.
-- target_community: subreddit or Quora topic name (e.g. r/SaaS)
-- post_ideas.outline: 3–4 short bullets; one MUST mention {{product_name}}
-- post_ideas.body: FULL Reddit post body ready to paste (NOT a numbered outline). Max 160 words.
-  Structure: hook → insight → how {{product_name}} fits (REQUIRED: name + domain from {{url}} once) → takeaway → question.
-  No hashtags, no markdown title, no invented features.
+
+promo_risk (thread fit for naming this product):
+- low = recommendations / "what tool" / "how do I" / seeking solutions → may name product once
+- medium = general discussion → soft or no product name
+- high = anti-promo culture, pure vent, or bad fit → zero product name, zero URL
+
+suggested_reply (this is a Reddit COMMENT on that specific thread — not a blog post):
+1. First sentence MUST answer or react to THIS thread's title/snippet (name a detail from it).
+2. Second: one concrete tip they can try with or without any product.
+3. If promo_risk=low: one casual product mention near the end ({{product_name}} + optional domain from {{url}}). Sound like "I use X for …" not a pitch.
+4. If medium: product optional and brief; if high: no product, no URL.
+5. 2–5 short sentences. Contractions. Slightly uneven. Max 65 words.
+6. Never open with a marketing thesis, numbered plan, or "priority" framing.
+
+HARD BAN — if any of these appear, the reply is invalid (Reddit auto-removes this voice):
+- Week 1 / Week one / "priority:"
+- "people who already have the problem" / "where your buyers already hang out"
+- "underrated" / "highest-ROI" / "compounds fast" / "manual grind"
+- "the real question is" / "where intent already lives"
+- "Don't spam" / "one great reply beats" / "genuine help"
+- "first real users" / "before touching paid ads"
+- "Here's the thing" / "The key is" / "At the end of the day"
+- Channel-comparison essays (PH vs HN vs Reddit strategy lectures)
+- "Do PH for the backlink, then…" style closing CTAs
+- bullet lists, numbered steps, LinkedIn-coach tone
+- Opening with general growth advice instead of THIS thread
+- 3+ short paragraphs that could sit under any SaaS launch post
+
+Write like a founder on their phone. Specific > clever. Never invent product features — only Name/Summary above.
+If the thread is about Product Hunt / launch channels: answer THAT question in 2–4 sentences with a personal take. Do not deliver a mini blog post.
+
+post_ideas: exactly {{post_idea_count}} original self-posts (not replies).
+- target_community: e.g. r/SaaS
+- outline: 3 short bullets; one may mention {{product_name}}
+- body: paste-ready prose max 120 words: hook → insight → how {{product_name}} fits once (name + domain) → takeaway → question
+- No hashtags, no markdown title, no invented features, no banned phrases above
 
 JSON schema:
 {

@@ -99,11 +99,55 @@ class GrowthScanCreated(BaseModel):
     scan_id: str
 
 
+class PartialThreadOut(BaseModel):
+    title: str
+    url: str
+    source: str = "reddit"
+    snippet: str = ""
+    date: str = ""
+    query: str = ""
+
+
+class GrowthPartialOut(BaseModel):
+    product_name: str = ""
+    niche_label: str = ""
+    product_summary: str = ""
+    audience: str = ""
+    threads: list[PartialThreadOut] = Field(default_factory=list)
+    total_threads: int = 0
+    drafts_ready: bool = False
+
+
 class GrowthScanStatusResponse(BaseModel):
     scan_id: str
     status: ScanStatus
     url: str
     error: str | None = None
+    stage: str = "queued"
+    stage_message: str = ""
+    progress_pct: int = 0
+    partial: GrowthPartialOut | None = None
+    notify_email: str | None = None
+
+
+class NotifyRequest(BaseModel):
+    email: str | None = Field(default=None, max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str | None) -> str | None:
+        if v is None or not str(v).strip():
+            return None
+        email = str(v).strip().lower()
+        if not _EMAIL_RE.match(email):
+            raise ValueError("Enter a valid email address.")
+        return email
+
+
+class NotifyResponse(BaseModel):
+    scan_id: str
+    notify_email: str
+    message: str
 
 
 class SubredditOut(BaseModel):
@@ -174,6 +218,48 @@ def get_engine() -> Engine:
     return db_engine
 
 
+def _partial_from_job(partial: dict | None) -> GrowthPartialOut | None:
+    if not partial:
+        return None
+    threads = []
+    for t in partial.get("threads") or []:
+        if not isinstance(t, dict):
+            continue
+        threads.append(
+            PartialThreadOut(
+                title=str(t.get("title") or "Untitled")[:300],
+                url=str(t.get("url") or ""),
+                source=str(t.get("source") or "reddit"),
+                snippet=str(t.get("snippet") or "")[:240],
+                date=str(t.get("date") or "")[:80],
+                query=str(t.get("query") or "")[:120],
+            )
+        )
+    return GrowthPartialOut(
+        product_name=str(partial.get("product_name") or ""),
+        niche_label=str(partial.get("niche_label") or ""),
+        product_summary=str(partial.get("product_summary") or ""),
+        audience=str(partial.get("audience") or ""),
+        threads=threads,
+        total_threads=int(partial.get("total_threads") or len(threads)),
+        drafts_ready=bool(partial.get("drafts_ready")),
+    )
+
+
+def _status_from_job(job) -> GrowthScanStatusResponse:
+    return GrowthScanStatusResponse(
+        scan_id=job.scan_id,
+        status=job.status,
+        url=job.url,
+        error=job.error,
+        stage=getattr(job, "stage", None) or "queued",
+        stage_message=getattr(job, "stage_message", None) or "",
+        progress_pct=int(getattr(job, "progress_pct", 0) or 0),
+        partial=_partial_from_job(getattr(job, "partial", None)),
+        notify_email=getattr(job, "notify_email", None),
+    )
+
+
 def _require_growth_env() -> None:
     missing = []
     if not os.environ.get("SERPER_API_KEY", "").strip():
@@ -234,26 +320,19 @@ def cancel_growth_scan(
         raise HTTPException(status_code=404, detail="Scan not found.")
 
     if job.status in (ScanStatus.done, ScanStatus.failed, ScanStatus.cancelled):
-        return GrowthScanStatusResponse(
-            scan_id=job.scan_id,
-            status=job.status,
-            url=job.url,
-            error=job.error,
-        )
+        return _status_from_job(job)
 
     store.update(
         scan_id,
         status=ScanStatus.cancelled,
         error="Scan stopped by user.",
+        stage="cancelled",
+        stage_message="Stopped",
+        progress_pct=100,
     )
     job = store.get(scan_id)
     assert job is not None
-    return GrowthScanStatusResponse(
-        scan_id=job.scan_id,
-        status=job.status,
-        url=job.url,
-        error=job.error,
-    )
+    return _status_from_job(job)
 
 
 @router.get("/history", response_model=GrowthScanHistoryResponse)
@@ -284,8 +363,11 @@ def _build_growth_report(
     from_cache: bool,
     tier: str,
 ) -> GrowthScanReport:
-    is_full = tier == "full"
+    # Free lifetime scan and paid credits both get a complete report (no teaser gate).
+    # Quota still limits free users to one scan; report_tier is "full" for UI unlock.
+    is_full = True
     gated = gate_growth_report(result, is_full)
+    report_tier = "full" if tier in ("full", "free") else tier
     return GrowthScanReport(
         scan_id=scan_id,
         url=url,
@@ -299,7 +381,82 @@ def _build_growth_report(
         total_threads=gated["total_threads"],
         total_post_ideas=gated["total_post_ideas"],
         from_cache=from_cache,
-        report_tier=tier,
+        report_tier=report_tier,
+    )
+
+
+@router.post("/{scan_id}/notify", response_model=NotifyResponse)
+def request_scan_notify(
+    scan_id: str,
+    body: NotifyRequest,
+    clerk_payload: ClerkPayload,
+    store: GrowthScanStore = Depends(get_store),
+    engine: Engine = Depends(get_engine),
+) -> NotifyResponse:
+    """Email the user when this scan finishes (safe to leave the tab)."""
+    clerk_id = clerk_payload["sub"]
+    job = store.get(scan_id)
+    if not job:
+        # Completed scans may only live in DB — still allow a one-shot email
+        saved = get_saved_growth_scan(engine, scan_id)
+        if not saved:
+            raise HTTPException(status_code=404, detail="Scan not found.")
+        email = body.email or get_user_email(engine, clerk_id)
+        if not email:
+            raise HTTPException(
+                status_code=400,
+                detail="No email on file. Enter an email to get notified.",
+            )
+        from app.email.brevo import send_scan_ready_async
+
+        send_scan_ready_async(
+            email,
+            url=saved["url"],
+            success=True,
+            product_name=saved.get("product_name") or "",
+            scan_id=scan_id,
+        )
+        return NotifyResponse(
+            scan_id=scan_id,
+            notify_email=email,
+            message="Scan already finished — we sent a link to your results.",
+        )
+
+    email = body.email or get_user_email(engine, clerk_id)
+    if not email:
+        raise HTTPException(
+            status_code=400,
+            detail="No email on file. Enter an email to get notified.",
+        )
+
+    if job.status == ScanStatus.done:
+        from app.email.brevo import send_scan_ready_async
+
+        product = ""
+        if job.result:
+            product = str(job.result.get("product_name") or "")
+        send_scan_ready_async(
+            email,
+            url=job.url,
+            success=True,
+            product_name=product,
+            scan_id=scan_id,
+        )
+        store.update(scan_id, notify_email=email, notify_sent=True)
+        return NotifyResponse(
+            scan_id=scan_id,
+            notify_email=email,
+            message="Scan already finished — we sent a link to your results.",
+        )
+
+    if job.status in (ScanStatus.failed, ScanStatus.cancelled):
+        raise HTTPException(status_code=409, detail="This scan is no longer running.")
+
+    store.update(scan_id, notify_email=email, notify_sent=False)
+    return NotifyResponse(
+        scan_id=scan_id,
+        notify_email=email,
+        message=f"We'll email {email} when your scan is ready.",
     )
 
 
@@ -311,12 +468,7 @@ def growth_status(
 ) -> GrowthScanStatusResponse:
     job = store.get(scan_id)
     if job:
-        return GrowthScanStatusResponse(
-            scan_id=job.scan_id,
-            status=job.status,
-            url=job.url,
-            error=job.error,
-        )
+        return _status_from_job(job)
 
     saved = get_saved_growth_scan(engine, scan_id)
     if saved:
@@ -325,6 +477,11 @@ def growth_status(
             status=ScanStatus.done,
             url=saved["url"],
             error=None,
+            stage="done",
+            stage_message="Scan complete",
+            progress_pct=100,
+            partial=None,
+            notify_email=None,
         )
 
     raise HTTPException(status_code=404, detail="Scan not found.")

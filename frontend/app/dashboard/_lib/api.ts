@@ -236,11 +236,35 @@ export async function fetchTrends(refresh = false, getToken?: TokenGetter): Prom
 
 // ── Growth scans ─────────────────────────────────────────────────────────────
 
-interface GrowthStatusResponse {
+export interface GrowthPartialThreadApi {
+  title: string;
+  url: string;
+  source: string;
+  snippet: string;
+  date?: string;
+  query?: string;
+}
+
+export interface GrowthPartialApi {
+  product_name: string;
+  niche_label: string;
+  product_summary: string;
+  audience: string;
+  threads: GrowthPartialThreadApi[];
+  total_threads: number;
+  drafts_ready: boolean;
+}
+
+export interface GrowthStatusResponse {
   scan_id: string;
   status: ApiScanStatus;
   url: string;
   error: string | null;
+  stage?: string;
+  stage_message?: string;
+  progress_pct?: number;
+  partial?: GrowthPartialApi | null;
+  notify_email?: string | null;
 }
 
 interface ApiGrowthThread {
@@ -370,6 +394,53 @@ export async function submitGrowthScan(url: string, getToken: TokenGetter): Prom
 export async function pollGrowthStatus(scanId: string): Promise<GrowthStatusResponse> {
   const res = await fetch(`${BASE}/growth-scans/${scanId}/status`);
   if (!res.ok) throw new Error(`Failed to poll status: ${res.status}`);
+  return res.json();
+}
+
+export function toGrowthProgress(s: GrowthStatusResponse): import("../_types").GrowthScanProgress {
+  const p = s.partial;
+  return {
+    stage: s.stage || (s.status === "queued" ? "queued" : "running"),
+    stageMessage: s.stage_message || "",
+    progressPct: typeof s.progress_pct === "number" ? s.progress_pct : 0,
+    notifyEmail: s.notify_email ?? null,
+    partial: p
+      ? {
+          productName: p.product_name || "",
+          nicheLabel: p.niche_label || "",
+          productSummary: p.product_summary || "",
+          audience: p.audience || "",
+          threads: (p.threads || []).map((t) => ({
+            title: t.title,
+            url: t.url,
+            source: t.source || "reddit",
+            snippet: t.snippet || "",
+            date: t.date || "",
+            query: t.query,
+          })),
+          totalThreads: p.total_threads ?? (p.threads?.length ?? 0),
+          draftsReady: Boolean(p.drafts_ready),
+        }
+      : null,
+  };
+}
+
+export async function requestGrowthScanNotify(
+  scanId: string,
+  getToken: TokenGetter,
+  email?: string,
+): Promise<{ notify_email: string; message: string }> {
+  const token = await getToken();
+  if (!token) throw new Error("auth_invalid");
+  const res = await fetch(`${BASE}/growth-scans/${scanId}/notify`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(email ? { email } : {}),
+  });
+  if (!res.ok) await parseApiError(res, `Could not set notify (${res.status})`);
   return res.json();
 }
 

@@ -13,6 +13,8 @@ import {
   fetchQuota,
   fetchBillingStatus,
   capturePayPalOrder,
+  toGrowthProgress,
+  requestGrowthScanNotify,
 } from "./_lib/api";
 import { normalizeWebsiteUrl } from "./_lib/website-url";
 import { PACK_SCANS } from "../_lib/pricing";
@@ -34,6 +36,7 @@ import {
   type GrowthScanHistoryEntry,
 } from "./_components/GrowthScanHistory";
 import { sortThreads, type ThreadSort } from "./_lib/thread-sort";
+import type { GrowthScanProgress } from "./_types";
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -66,6 +69,9 @@ export default function Dashboard() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
+  const [scanProgress, setScanProgress] = useState<GrowthScanProgress | null>(null);
+  const [notifyStatus, setNotifyStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [notifyMessage, setNotifyMessage] = useState("");
   const [resultsTab, setResultsTab] = useState<ResultsTab>("replies");
   const [threadSort, setThreadSort] = useState<ThreadSort>("latest");
 
@@ -74,7 +80,8 @@ export default function Dashboard() {
   const stoppedRef = useRef(false);
   const autoScanStarted = useRef(false);
 
-  const reportIsFull = report?.reportTier === "full";
+  // Free lifetime scan and paid credits both return a complete report
+  const reportIsFull = report?.reportTier === "full" || report?.reportTier === "free";
 
   const sortedThreads = useMemo(
     () => (report ? sortThreads(report.threads, threadSort) : []),
@@ -132,6 +139,25 @@ export default function Dashboard() {
     }
   }, [isLoaded, isSignedIn, refreshAccount, refreshHistory]);
 
+  // Tab title so users who background the tab notice completion
+  useEffect(() => {
+    const prev = document.title;
+    if (status === "loading") {
+      const pct = scanProgress?.progressPct;
+      document.title =
+        pct && pct > 5
+          ? `(${pct}%) Scanning… · Thynkk`
+          : "Scanning… · Thynkk";
+    } else if (status === "done") {
+      document.title = "✓ Scan ready · Thynkk";
+    } else {
+      document.title = prev.includes("Thynkk") ? "Dashboard · Thynkk" : prev;
+    }
+    return () => {
+      document.title = prev;
+    };
+  }, [status, scanProgress?.progressPct]);
+
   useEffect(() => {
     if (searchParams.get("upgrade") === "true") openUpgrade();
     const param = searchParams.get("url");
@@ -158,6 +184,8 @@ export default function Dashboard() {
         const s = await pollGrowthStatus(scanId);
         if (stoppedRef.current || activeScanIdRef.current !== scanId) return;
 
+        setScanProgress(toGrowthProgress(s));
+
         if (s.status === "done") {
           const data = await fetchGrowthReport(scanId, getToken);
           if (stoppedRef.current || activeScanIdRef.current !== scanId) return;
@@ -165,17 +193,20 @@ export default function Dashboard() {
           setResultsTab("replies");
           setScanTime(new Date());
           setStatus("done");
+          setScanProgress(null);
           clearActiveScan();
           refreshAccount();
           refreshHistory();
         } else if (s.status === "failed") {
           setErrorMessage(s.error ?? "Scan failed. Try a different URL.");
           setStatus("error");
+          setScanProgress(null);
           clearActiveScan();
           refreshAccount();
         } else if (s.status === "cancelled") {
           setErrorMessage("Scan stopped.");
           setStatus("error");
+          setScanProgress(null);
           clearActiveScan();
           refreshAccount();
         } else {
@@ -185,10 +216,33 @@ export default function Dashboard() {
         if (stoppedRef.current) return;
         setErrorMessage(formatScanError(e));
         setStatus("error");
+        setScanProgress(null);
         clearActiveScan();
       }
     }, POLL_INTERVAL_MS);
   }, [getToken, refreshAccount, refreshHistory]);
+
+  const handleNotify = useCallback(
+    async (email?: string) => {
+      const scanId = activeScanIdRef.current;
+      if (!scanId) return;
+      setNotifyStatus("saving");
+      setNotifyMessage("");
+      try {
+        const res = await requestGrowthScanNotify(scanId, getToken, email);
+        setNotifyStatus("saved");
+        setNotifyMessage(res.message);
+        setScanProgress((prev) =>
+          prev ? { ...prev, notifyEmail: res.notify_email } : prev,
+        );
+      } catch (e: unknown) {
+        setNotifyStatus("error");
+        setNotifyMessage(e instanceof Error ? e.message : "Could not save notify preference.");
+        throw e;
+      }
+    },
+    [getToken],
+  );
 
   const handleStopScan = async () => {
     const scanId = activeScanIdRef.current;
@@ -207,6 +261,9 @@ export default function Dashboard() {
     clearActiveScan();
     setStatus("idle");
     setErrorMessage("");
+    setScanProgress(null);
+    setNotifyStatus("idle");
+    setNotifyMessage("");
     refreshAccount();
   };
 
@@ -246,6 +303,15 @@ export default function Dashboard() {
     }
 
     setStatus("loading");
+    setScanProgress({
+      stage: "starting",
+      stageMessage: "Starting scan…",
+      progressPct: 5,
+      partial: null,
+      notifyEmail: null,
+    });
+    setNotifyStatus("idle");
+    setNotifyMessage("");
     submitGrowthScan(normalized, getToken)
       .then((scanId) => {
         if (stoppedRef.current) {
@@ -299,6 +365,9 @@ export default function Dashboard() {
     setReport(null);
     setErrorMessage("");
     setScanTime(null);
+    setScanProgress(null);
+    setNotifyStatus("idle");
+    setNotifyMessage("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -361,7 +430,15 @@ export default function Dashboard() {
         )}
 
         {status === "loading" && (
-          <GrowthScanningState onStop={handleStopScan} stopping={stopping} />
+          <GrowthScanningState
+            progress={scanProgress}
+            onStop={handleStopScan}
+            stopping={stopping}
+            onNotify={handleNotify}
+            notifyEmail={scanProgress?.notifyEmail}
+            notifyStatus={notifyStatus}
+            notifyMessage={notifyMessage}
+          />
         )}
 
         {status === "error" && (

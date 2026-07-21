@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -207,34 +208,85 @@ def _coerce_report_data(data: dict, product: dict[str, str]) -> dict:
     return out
 
 
+_STOPWORDS = frozenset(
+    "the a an and or for with your you our we from this that into onto about "
+    "using use free best top new get how what why when where online home page "
+    "welcome official site website app platform product services service "
+    "com www https http".split()
+)
+
+
+def _tokenize(text: str) -> list[str]:
+    words = re.findall(r"[a-zA-Z][a-zA-Z0-9+-]{2,}", text.lower())
+    return [w for w in words if w not in _STOPWORDS and not w.isdigit()]
+
+
+def _product_name_from_site(site: SiteContext) -> str:
+    title = (site.title or "").strip()
+    if title:
+        # "Product — tagline" / "Product | tagline" / "Product: tagline"
+        for sep in (" – ", " — ", " - ", " | ", " · ", ": "):
+            if sep in title:
+                left = title.split(sep, 1)[0].strip()
+                if 2 <= len(left) <= 60:
+                    return left
+        if len(title) <= 60:
+            return title
+        return title[:57].rsplit(" ", 1)[0] + "…"
+    domain = site.domain or "Product"
+    base = domain.split(".")[0]
+    return base[:1].upper() + base[1:] if base else domain
+
+
 def infer_product_context(
     site: SiteContext,
-    client: anthropic.Anthropic | None = None,
+    client: anthropic.Anthropic | None = None,  # kept for call-site compat; unused
 ) -> dict[str, str]:
-    """Quick product extraction when we only have page meta."""
-    if client is None:
-        client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    """Fast product extraction from page meta — no LLM (one Claude call later for drafts)."""
+    del client  # explicit: heuristic only
+    name = _product_name_from_site(site)
+    desc = (site.description or "").strip()
+    blob = f"{site.title} {desc} {site.text_snippet[:800]}"
+    tokens = _tokenize(blob)
 
-    prompt = f"""From this website metadata, infer product context for a growth assistant.
-Return JSON only: {{"product_name","niche_label","product_summary","audience","keywords":[]}}
+    # Prefer multi-word phrases from description for niche
+    niche = ""
+    if desc:
+        # First ~8 content words as niche label
+        d_tokens = _tokenize(desc)[:6]
+        if d_tokens:
+            niche = " ".join(d_tokens)
+    if not niche and tokens:
+        niche = " ".join(tokens[:4])
+    if not niche:
+        niche = site.domain.split(".")[0] if site.domain else "saas"
 
-URL: {site.url}
-Title: {site.title}
-Description: {site.description}
-Page text: {site.text_snippet[:1200]}"""
+    keywords: list[str] = []
+    seen: set[str] = set()
+    for t in tokens:
+        if t in seen or t == name.lower():
+            continue
+        seen.add(t)
+        keywords.append(t)
+        if len(keywords) >= 5:
+            break
 
-    response = client.messages.create(
-        model=_MODEL,
-        max_tokens=1024,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    data = _parse_json(response.content[0].text.strip())
+    summary = desc or (site.text_snippet[:280].strip() if site.text_snippet else "") or f"{name} — {niche}"
+    audience = "indie founders and early-stage teams"
+    lower = blob.lower()
+    if any(w in lower for w in ("b2b", "enterprise", "sales team", "developer", "api")):
+        audience = "B2B buyers and operators"
+    elif any(w in lower for w in ("shop", "store", "ecommerce", "e-commerce", "buy now")):
+        audience = "online shoppers and store owners"
+    elif any(w in lower for w in ("health", "wellness", "fitness", "gut", "diet")):
+        audience = "people researching health and wellness solutions"
+
     return {
-        "product_name": str(data.get("product_name") or site.title),
-        "niche_label": str(data.get("niche_label") or site.domain),
-        "product_summary": str(data.get("product_summary") or site.description),
-        "audience": str(data.get("audience") or "indie founders"),
-        "keywords": [str(k) for k in data.get("keywords", [])[:6]],
+        "product_name": name,
+        "niche_label": niche[:80],
+        "product_summary": summary[:500],
+        "audience": audience,
+        "keywords": keywords,
     }
 
 
@@ -271,12 +323,217 @@ def _strip_outline_prefix(line: str) -> str:
     return s
 
 
+# Phrases Reddit automod / users treat as AI/low-effort promo voice
+_SLOP_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(p, re.I)
+    for p in (
+        r"week\s*1\s*priority",
+        r"week\s+one\s+priority",
+        r"people who already have the problem",
+        r"\bunderrated\b",
+        r"don'?t spam",
+        r"do not spam",
+        r"one great reply beats",
+        r"genuine help",
+        r"mention your product naturally",
+        r"first real users",
+        r"before touching paid ads",
+        r"here'?s the thing",
+        r"the key is",
+        r"the real question is",
+        r"at the end of the day",
+        r"in today'?s landscape",
+        r"get in front of people",
+        r"reply with genuine",
+        r"naturally once",
+        # Product Hunt / channel-strategy essay (2nd real AutoMod kill)
+        r"worth a day,? not a week",
+        r"where your buyers already hang out",
+        r"highest[- ]roi",
+        r"compounds fast",
+        r"where intent already lives",
+        r"without the manual grind",
+        r"manual grind",
+        r"do ph for the backlink",
+        r"go where intent",
+        r"hit-or-miss depending",
+        r"for most saas niches",
+        r"replying with actual value",
+        r"it compounds",
+        r"distribution channel",
+        r"low[- ]hanging fruit",
+        r"game[- ]changer",
+        r"unlock growth",
+        r"leverage reddit",
+    )
+]
+
+# Soft signals: 2+ in one reply ≈ coach essay
+_SLOP_SOFT_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(p, re.I)
+    for p in (
+        r"\bproduct hunt\b",
+        r"\bbacklink\b",
+        r"\bROI\b",
+        r"\bcompound",
+        r"\baudience was already",
+        r"\balready asking",
+        r"\bnot a week\b",
+        r"\bhang out\b",
+        r"\bHN\b",
+        r"\bhacker news\b",
+    )
+]
+
+
+def _content_tokens(text: str) -> set[str]:
+    return {
+        w
+        for w in re.findall(r"[a-z]{4,}", (text or "").lower())
+        if w not in _STOPWORDS
+    }
+
+
+def _looks_like_slop(text: str, *, title: str = "", snippet: str = "") -> bool:
+    """True when draft matches known auto-remove / coach-speak patterns."""
+    raw = (text or "").strip()
+    if not raw:
+        return True
+    if any(p.search(raw) for p in _SLOP_PATTERNS):
+        return True
+    soft = sum(1 for p in _SLOP_SOFT_PATTERNS if p.search(raw))
+    if soft >= 2:
+        return True
+    # Essay structure: long + many commas
+    if len(raw) > 380 and raw.count(",") >= 5:
+        return True
+    # Multi-paragraph strategy post (common AutoMod kill)
+    paras = [p for p in re.split(r"\n\s*\n", raw) if p.strip()]
+    if len(paras) >= 3 and len(raw.split()) >= 70:
+        return True
+    # Numbered playbook
+    if re.search(r"(?m)^\s*\d+[\.\)]\s+\S", raw) and raw.count("\n") >= 2:
+        return True
+    # Doesn't touch the thread at all (generic channel essay)
+    thread_ctx = f"{title} {snippet}".strip()
+    if thread_ctx and len(raw.split()) >= 40:
+        t_toks = _content_tokens(thread_ctx)
+        r_toks = _content_tokens(raw)
+        # Ignore product-y words when scoring overlap
+        if t_toks and len(t_toks & r_toks) == 0:
+            return True
+    return False
+
+
+def _clip_words(text: str, max_words: int = 65) -> str:
+    words = text.split()
+    if len(words) <= max_words:
+        return text.strip()
+    return " ".join(words[:max_words]).rstrip(".,;:") + "."
+
+
+def _thread_detail(title: str, snippet: str) -> str:
+    """Pick a short concrete hook from title or snippet."""
+    title = (title or "").strip()
+    snippet = (snippet or "").strip()
+    if title and len(title) > 8:
+        # Drop trailing punctuation for embedding in a sentence
+        t = title.rstrip("?.!").strip()
+        if len(t) > 90:
+            t = t[:87].rsplit(" ", 1)[0] + "…"
+        return t
+    if snippet:
+        s = snippet[:100].rsplit(" ", 1)[0] if len(snippet) > 100 else snippet
+        return s.rstrip("?.!")
+    return "this"
+
+
+def _fallback_reply(
+    *,
+    title: str,
+    snippet: str,
+    product_name: str,
+    domain: str,
+    promo_risk: str,
+) -> str:
+    """Human-ish safety net when the model emits banned playbook voice."""
+    detail = _thread_detail(title, snippet)
+    risk = (promo_risk or "medium").lower()
+    # Keep it short, thread-first, slightly messy — not a channel strategy essay
+    openers = [
+        f'On "{detail}" - depends a lot on niche.',
+        f'For "{detail}" I would not over-invest in one launch day.',
+        f'Re "{detail}" - I treated big launch sites as a one-day experiment max.',
+    ]
+    # Stable pick from title length so same thread gets same opener
+    opener = openers[len(detail) % len(openers)]
+    tip = (
+        f"{opener} The stuff that actually moved the needle for me was replying in "
+        f"threads where people already asked the question my product answers."
+    )
+    if risk == "high":
+        return _clip_words(
+            f"{tip} I would not drop a link cold in places that hate promo."
+        )
+    if risk == "low" and (product_name or domain):
+        label = product_name.strip() or domain
+        return _clip_words(
+            f"{tip} I use {label} ({domain}) to list those threads + a rough draft, "
+            f"then I rewrite before posting."
+        )
+    return _clip_words(f"{tip} Manual search works too, just slower.")
+
+
+def _humanize_reply(
+    reply: str,
+    *,
+    title: str,
+    snippet: str,
+    product_name: str,
+    domain: str,
+    promo_risk: str,
+) -> str:
+    text = (reply or "").strip()
+    risk = (promo_risk or "medium").lower()
+    if _looks_like_slop(text, title=title, snippet=snippet):
+        return _fallback_reply(
+            title=title,
+            snippet=snippet,
+            product_name=product_name,
+            domain=domain,
+            promo_risk=risk,
+        )
+    # Soften formulaic product tack-ons without rewriting good prose
+    text = re.sub(
+        r"\n\nI'?ve been using .+? for this exact problem[^\n]*",
+        "",
+        text,
+        flags=re.I,
+    ).strip()
+    if risk == "high":
+        # Strip product/domain if model violated high-risk
+        if product_name and product_name.lower() in text.lower():
+            return _fallback_reply(
+                title=title, snippet=snippet, product_name=product_name,
+                domain=domain, promo_risk=risk,
+            )
+    # Second pass after soft cleanup
+    if _looks_like_slop(text, title=title, snippet=snippet):
+        return _fallback_reply(
+            title=title,
+            snippet=snippet,
+            product_name=product_name,
+            domain=domain,
+            promo_risk=risk,
+        )
+    return _clip_words(text, 70)
+
+
 def _build_promotional_prose(idea: PostIdeaOut, product_name: str, domain: str) -> str:
     """Real Reddit self-post: story + product promotion (not an outline dump)."""
     label = (product_name or "").strip() or domain
     hook = (idea.hook or "").strip() or (idea.title or "").strip()
     bullets = [_strip_outline_prefix(o) for o in (idea.outline or []) if o and o.strip()]
-    # Prefer outline; if body is outline-like, mine those lines too
     if not bullets and idea.body:
         bullets = [
             _strip_outline_prefix(ln)
@@ -289,36 +546,25 @@ def _build_promotional_prose(idea: PostIdeaOut, product_name: str, domain: str) 
         paras.append(hook)
 
     if bullets:
-        # First 1–2 points as story context
-        lead = bullets[:2]
-        for b in lead:
+        for b in bullets[:2]:
             if b and b.lower() not in hook.lower():
                 paras.append(b if b.endswith((".", "?", "!")) else f"{b}.")
 
     paras.append(
-        f"What actually helped me stop spinning was running myself through {label} "
-        f"({domain}). It breaks things into clear categories and gives you a score per area - "
-        f"so you can see whether diet is really the issue or if sleep/stress is quietly worse."
+        f"What cut the noise for me was {label} ({domain}) — "
+        f"not as a magic fix, just something that made the next step obvious."
     )
 
-    # Remaining outline points as concrete takeaways (prose, not numbered list)
-    rest = bullets[2:5] if bullets else []
-    for b in rest:
+    for b in (bullets[2:4] if bullets else []):
         if not b:
             continue
-        # Skip if it already sounds like a product CTA we just wrote
-        if domain.lower() in b.lower() or (label.lower() in b.lower() and "score" in b.lower()):
+        if domain.lower() in b.lower() or label.lower() in b.lower():
             continue
-        sentence = b if b.endswith((".", "?", "!")) else f"{b}."
-        paras.append(sentence)
+        paras.append(b if b.endswith((".", "?", "!")) else f"{b}.")
 
     paras.append(
-        f"If you're stuck in the same loop of random gut tips, try scoring yourself on "
-        f"{label} ({domain}) once - then focus on the lowest pillar for a week and see what moves."
-    )
-    paras.append(
-        "Curious where you'd score lowest right now - diet, digestion, sleep, or stress? "
-        "Drop it in the comments."
+        f"If you're stuck in the same loop, try {label} ({domain}) once and see if it "
+        f"clears the fog — then tell me what actually moved."
     )
     return "\n\n".join(paras).strip()
 
@@ -332,19 +578,17 @@ def _text_has_product(text: str, product_name: str, domain: str) -> bool:
         return False
     if name.lower() in lower:
         return True
-    # Loose match: "Gut Gauge" vs "gutgauge" / "GutGuage"
     compact = "".join(ch for ch in name.lower() if ch.isalnum())
     text_compact = "".join(ch for ch in lower if ch.isalnum())
     return bool(compact) and compact in text_compact
 
 
 def _promote_post_body(body: str, product_name: str, domain: str) -> str:
-    """Append product mention when prose is good but brand is missing."""
+    """Append a light product mention when prose is good but brand is missing."""
     label = product_name.strip() or domain
     mention = (
-        f"What finally clicked for me was scoring it properly with {label} "
-        f"({domain}) — once I saw the categories side by side, the real bottleneck "
-        f"was obvious instead of guessing from random advice."
+        f"I ended up using {label} ({domain}) for this — "
+        f"not a miracle, just made the next step clearer."
     )
     text = body.rstrip()
     lines = text.split("\n")
@@ -380,31 +624,56 @@ def ensure_promotional_post_ideas(
     if not domain:
         domain = "your site"
 
-    # --- reply drafts (low risk) ---
+    # --- reply drafts: scrub AI playbook voice, light product mention only if needed ---
     new_threads = []
     for t in threads:
         if is_dict:
             reply = (t.get("suggested_reply") or "").strip()
             risk = (t.get("promo_risk") or "medium").lower()
-            if name and risk == "low" and reply and not _text_has_product(reply, name, domain):
-                reply = (
-                    f"{reply.rstrip()}\n\n"
-                    f"I've been using {name} ({domain}) for this exact problem — "
-                    f"it helped me get a clearer starting point instead of guessing."
+            title = str(t.get("title") or "")
+            snippet = str(t.get("snippet") or "")
+            reply = _humanize_reply(
+                reply,
+                title=title,
+                snippet=snippet,
+                product_name=name,
+                domain=domain,
+                promo_risk=risk,
+            )
+            if (
+                name
+                and risk == "low"
+                and reply
+                and not _text_has_product(reply, name, domain)
+                and not _looks_like_slop(reply)
+            ):
+                reply = _clip_words(
+                    f"{reply.rstrip()} I use {name} ({domain}) when I'm hunting threads like this."
                 )
-                t = {**t, "suggested_reply": reply}
+            t = {**t, "suggested_reply": reply}
             new_threads.append(t)
         else:
             reply = (t.suggested_reply or "").strip()
             risk = (t.promo_risk or "medium").lower()
-            if name and risk == "low" and reply and not _text_has_product(reply, name, domain):
-                reply = (
-                    f"{reply.rstrip()}\n\n"
-                    f"I've been using {name} ({domain}) for this exact problem — "
-                    f"it helped me get a clearer starting point instead of guessing."
+            reply = _humanize_reply(
+                reply,
+                title=t.title,
+                snippet=t.snippet,
+                product_name=name,
+                domain=domain,
+                promo_risk=risk,
+            )
+            if (
+                name
+                and risk == "low"
+                and reply
+                and not _text_has_product(reply, name, domain)
+                and not _looks_like_slop(reply)
+            ):
+                reply = _clip_words(
+                    f"{reply.rstrip()} I use {name} ({domain}) when I'm hunting threads like this."
                 )
-                t = t.model_copy(update={"suggested_reply": reply})
-            new_threads.append(t)
+            new_threads.append(t.model_copy(update={"suggested_reply": reply}))
 
     # --- create new posts ---
     new_posts = []
@@ -432,11 +701,14 @@ def ensure_promotional_post_ideas(
         if not _text_has_product(body, name, domain):
             body = _promote_post_body(body, name, domain)
 
+        if _looks_like_slop(body):
+            body = _build_promotional_prose(idea, name, domain)
+
         outline = list(idea.outline or [])
         if outline and not _text_has_product(" ".join(outline), name, domain):
             label = name or domain
             outline = outline + [
-                f"Mention {label} ({domain}) as what you used to score the pillars — keep it one sentence, not a pitch"
+                f"One casual line on {label} ({domain}) — not a pitch deck"
             ]
 
         if is_dict:
@@ -555,10 +827,10 @@ def analyze_growth(
     # Feed model the freshest hits first
     hits = sort_hits_by_recency(hits)
 
-    # Full → compact retry if JSON truncates (common with long reply/post bodies)
+    # Smaller first pass (faster, less truncation) → compact retry only if needed
     attempts = [
-        {"thread_count": 7, "post_idea_count": 3, "hit_limit": 16, "max_tokens": 12288},
-        {"thread_count": 5, "post_idea_count": 2, "hit_limit": 12, "max_tokens": 8192},
+        {"thread_count": 5, "post_idea_count": 2, "hit_limit": 12, "max_tokens": 6144},
+        {"thread_count": 4, "post_idea_count": 2, "hit_limit": 10, "max_tokens": 4096},
     ]
 
     last_error: Exception | None = None
@@ -576,7 +848,9 @@ def analyze_growth(
         if i > 0:
             prompt += (
                 "\n\nIMPORTANT RETRY: Previous response was truncated/invalid JSON. "
-                "Return SMALLER valid JSON only. Shorter replies (≤70 words). "
+                "Return SMALLER valid JSON only. Shorter replies (≤65 words). "
+                "Each suggested_reply must reference THAT thread's title. "
+                "Banned: Week 1 priority, underrated, don't spam, genuine help, paid ads. "
                 "Post bodies ≤120 words. No markdown."
             )
 

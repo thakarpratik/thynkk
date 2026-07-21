@@ -1,9 +1,10 @@
-"""Discover community threads via Serper Google search."""
+"""Discover community threads via Serper Google search (parallel queries)."""
 
 from __future__ import annotations
 
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
@@ -19,6 +20,8 @@ _COMMUNITY_DOMAINS = ("reddit.com", "quora.com")
 _MIN_HITS_MONTH = 8
 _MIN_HITS_YEAR = 10
 _MIN_HITS_BEFORE_BROAD = 6
+_MAX_WORKERS = 5
+_MAX_PRIMARY_QUERIES = 8
 
 
 @dataclass
@@ -82,7 +85,7 @@ def build_queries(
     product_summary: str = "",
 ) -> list[str]:
     """Generate Serper queries — niche/problem first (works for unknown brands)."""
-    kw = [k.strip() for k in keywords if k and k.strip()][:6]
+    kw = [k.strip() for k in keywords if k and k.strip()][:4]
     queries: list[str] = []
 
     # Niche pain queries (primary for sites nobody has heard of)
@@ -99,8 +102,6 @@ def build_queries(
         queries.extend([
             f"{k} site:reddit.com",
             f"recommend {k} site:reddit.com",
-            f"what {k} do you use site:reddit.com",
-            f"frustrated with {k} site:reddit.com",
         ])
 
     # Pull extra terms from summary (first few meaningful phrases)
@@ -115,12 +116,12 @@ def build_queries(
         if brand.lower() not in (niche or "").lower():
             queries.append(f'"{brand}" alternative site:reddit.com')
 
-    return _dedupe_queries(queries, 14)
+    return _dedupe_queries(queries, _MAX_PRIMARY_QUERIES)
 
 
 def build_broad_fallback_queries(niche: str, keywords: list[str]) -> list[str]:
     """Broader queries when recent search returns too few hits."""
-    kw = [k.strip() for k in keywords if k and k.strip()][:4]
+    kw = [k.strip() for k in keywords if k and k.strip()][:3]
     queries: list[str] = []
 
     if niche:
@@ -137,7 +138,7 @@ def build_broad_fallback_queries(niche: str, keywords: list[str]) -> list[str]:
             f"site:reddit.com {k} advice",
         ])
 
-    return _dedupe_queries(queries, 8)
+    return _dedupe_queries(queries, 6)
 
 
 def _summary_terms(summary: str) -> list[str]:
@@ -153,19 +154,20 @@ def _summary_terms(summary: str) -> list[str]:
 
 
 def _serper_search(
-    client: httpx.Client,
     headers: dict[str, str],
     query: str,
     *,
     per_query: int,
     tbs: str | None,
 ) -> list[dict]:
+    """One Serper request with its own client (thread-safe for parallel use)."""
     payload: dict = {"q": query, "num": per_query}
     if tbs:
         payload["tbs"] = tbs
-    resp = client.post(SERPER_URL, headers=headers, json=payload)
-    resp.raise_for_status()
-    return resp.json().get("organic", [])
+    with httpx.Client(timeout=25) as client:
+        resp = client.post(SERPER_URL, headers=headers, json=payload)
+        resp.raise_for_status()
+        return resp.json().get("organic", [])
 
 
 def _collect_hits(
@@ -192,6 +194,42 @@ def _collect_hits(
                 date=item.get("date", "") or "",
             )
         )
+    return found
+
+
+def _run_queries_parallel(
+    headers: dict[str, str],
+    queries: list[str],
+    *,
+    per_query: int,
+    tbs: str | None,
+    seen_urls: set[str],
+    max_workers: int = _MAX_WORKERS,
+) -> list[DiscoveredThread]:
+    """Fire Serper queries concurrently; merge + dedupe into seen_urls."""
+    if not queries:
+        return []
+
+    found: list[DiscoveredThread] = []
+    workers = min(max_workers, len(queries))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {
+            pool.submit(
+                _serper_search,
+                headers,
+                q,
+                per_query=per_query,
+                tbs=tbs,
+            ): q
+            for q in queries
+        }
+        for fut in as_completed(futures):
+            query = futures[fut]
+            try:
+                organic = fut.result()
+            except Exception:
+                continue
+            found.extend(_collect_hits(organic, query, seen_urls))
     return found
 
 
@@ -253,7 +291,7 @@ def search_threads(
     niche: str = "",
     keywords: list[str] | None = None,
 ) -> list[DiscoveredThread]:
-    """Run Serper queries — past month first, then year, only then unfiltered."""
+    """Run Serper queries in parallel — past month first, then year, only then unfiltered."""
     key = api_key or os.environ.get("SERPER_API_KEY", "")
     if not key:
         raise RuntimeError("SERPER_API_KEY is not configured.")
@@ -262,29 +300,40 @@ def search_threads(
     seen_urls: set[str] = set()
     results: list[DiscoveredThread] = []
 
-    with httpx.Client(timeout=30) as client:
-        # Pass 1: past month (fresh conversations)
-        for query in queries:
-            organic = _serper_search(client, headers, query, per_query=per_query, tbs="qdr:m")
-            results.extend(_collect_hits(organic, query, seen_urls))
+    # Pass 1: past month (fresh conversations) — parallel
+    results.extend(
+        _run_queries_parallel(
+            headers, queries, per_query=per_query, tbs="qdr:m", seen_urls=seen_urls
+        )
+    )
 
-        # Pass 2: past year if month was thin
-        if len(results) < _MIN_HITS_MONTH:
-            for query in queries:
-                organic = _serper_search(client, headers, query, per_query=per_query, tbs="qdr:y")
-                results.extend(_collect_hits(organic, query, seen_urls))
+    # Pass 2: past year if month was thin
+    if len(results) < _MIN_HITS_MONTH:
+        results.extend(
+            _run_queries_parallel(
+                headers, queries, per_query=per_query, tbs="qdr:y", seen_urls=seen_urls
+            )
+        )
 
-        # Pass 3: broader niche queries still within past year
-        if len(results) < _MIN_HITS_YEAR:
-            fallback = build_broad_fallback_queries(niche, keywords or [])
-            for query in fallback:
-                organic = _serper_search(client, headers, query, per_query=per_query, tbs="qdr:y")
-                results.extend(_collect_hits(organic, query, seen_urls))
+    # Pass 3: broader niche queries still within past year
+    if len(results) < _MIN_HITS_YEAR:
+        fallback = build_broad_fallback_queries(niche, keywords or [])
+        results.extend(
+            _run_queries_parallel(
+                headers, fallback, per_query=per_query, tbs="qdr:y", seen_urls=seen_urls
+            )
+        )
 
-        # Pass 4: only if still sparse — drop recency filter (last resort)
-        if len(results) < _MIN_HITS_BEFORE_BROAD:
-            for query in queries[:6]:
-                organic = _serper_search(client, headers, query, per_query=per_query, tbs=None)
-                results.extend(_collect_hits(organic, f"{query} (broad)", seen_urls))
+    # Pass 4: only if still sparse — drop recency filter (last resort)
+    if len(results) < _MIN_HITS_BEFORE_BROAD:
+        results.extend(
+            _run_queries_parallel(
+                headers,
+                queries[:6],
+                per_query=per_query,
+                tbs=None,
+                seen_urls=seen_urls,
+            )
+        )
 
     return sort_hits_by_recency(results)
