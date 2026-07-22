@@ -73,6 +73,16 @@ interface PurchaseRow {
   created_at: string;
 }
 
+interface SaturationLeadRow {
+  id: number;
+  email: string;
+  idea: string;
+  score: number | null;
+  decision: string | null;
+  data_mode: string | null;
+  created_at: string;
+}
+
 interface TechCheck {
   name: string;
   ok: boolean;
@@ -127,6 +137,15 @@ interface AdminStats {
   waitlist_sources: SourceCount[];
   top_urls: UrlCount[];
   tier_breakdown: Record<string, number>;
+  saturation_total: number;
+  saturation_today: number;
+  saturation_this_week: number;
+  saturation_in_period: number;
+  saturation_unique_emails: number;
+  saturation_avg_score: number;
+  saturation_by_decision: NamedCount[];
+  saturation_top_ideas: NamedCount[];
+  recent_saturation_leads: SaturationLeadRow[];
   filtered_scans: number;
   filtered_unique_ips: number;
   filtered_signups: number;
@@ -383,6 +402,26 @@ function activeFilterCount(f: Filters): number {
   return n;
 }
 
+function decisionBadge(decision: string | null) {
+  const d = (decision || "unknown").toLowerCase();
+  if (d === "go") {
+    return "bg-[#22C55E]/10 text-[#22C55E] border-[#22C55E]/25";
+  }
+  if (d === "caution") {
+    return "bg-[#F59E0B]/10 text-[#FBBF24] border-[#F59E0B]/25";
+  }
+  if (d === "no_go" || d === "no-go") {
+    return "bg-[#EF4444]/10 text-[#FCA5A5] border-[#EF4444]/25";
+  }
+  return "bg-[#1E293B] text-[#94A3B8] border-[#334155]";
+}
+
+function decisionLabel(decision: string | null): string {
+  const d = (decision || "—").toLowerCase();
+  if (d === "no_go") return "no-go";
+  return d;
+}
+
 export default function AdminPage() {
   const [secret, setSecret] = useState("");
   const [authed, setAuthed] = useState(false);
@@ -618,13 +657,117 @@ export default function AdminPage() {
 
         {/* Period snapshot (respects filters) */}
         <Section title="Selected period">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <StatCard label="Scans" value={stats.filtered_scans} sub={`${stats.filtered_unique_ips} unique IPs`} />
             <StatCard label="Signups" value={stats.filtered_signups} />
             <StatCard label="Purchases" value={stats.filtered_purchases} />
             <StatCard label="Revenue" value={`$${stats.filtered_revenue_usd.toFixed(0)}`} sub="in period" />
+            <StatCard
+              label="Saturation scores"
+              value={stats.saturation_in_period ?? 0}
+              sub={`${stats.saturation_unique_emails ?? 0} unique emails`}
+            />
             <StatCard label="Cache hit" value={`${stats.cache_hit_rate_pct}%`} sub="lifetime" />
           </div>
+        </Section>
+
+        {/* Saturation Score */}
+        <Section title="Saturation Score (email leads)">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <StatCard
+              label="Total scores"
+              value={stats.saturation_total ?? 0}
+              sub={`+${stats.saturation_today ?? 0} today · +${stats.saturation_this_week ?? 0} week`}
+            />
+            <StatCard
+              label="In period"
+              value={stats.saturation_in_period ?? 0}
+              sub={`${stats.saturation_unique_emails ?? 0} unique emails`}
+            />
+            <StatCard
+              label="Avg score"
+              value={stats.saturation_avg_score ?? 0}
+              sub="lower = less saturated"
+            />
+            <StatCard
+              label="Waitlist"
+              value={stats.waitlist_total}
+              sub="pre-signup emails"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <Panel title="Decisions in period">
+              {(stats.saturation_by_decision ?? []).length === 0 ? (
+                <p className="px-5 py-4 text-xs text-[#475569] font-mono">No saturation scores yet</p>
+              ) : (
+                <BarList items={stats.saturation_by_decision} />
+              )}
+            </Panel>
+            <Panel title="Top ideas scored (period)">
+              {(stats.saturation_top_ideas ?? []).length === 0 ? (
+                <p className="px-5 py-4 text-xs text-[#475569] font-mono">No ideas yet</p>
+              ) : (
+                <BarList items={stats.saturation_top_ideas} />
+              )}
+            </Panel>
+          </div>
+
+          <Panel title={`Recent saturation leads (period · ${(stats.recent_saturation_leads ?? []).length})`}>
+            {(stats.recent_saturation_leads ?? []).length === 0 ? (
+              <p className="px-5 py-4 text-xs text-[#475569] font-mono">
+                No saturation leads in this range — scores appear after email unlock on /saturation
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#1E293B]">
+                      {["Email", "Idea", "Score", "Decision", "Mode", "When"].map((h) => (
+                        <th
+                          key={h}
+                          className="text-left text-[10px] font-mono text-[#475569] uppercase tracking-widest px-4 py-2"
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#0D1120]">
+                    {(stats.recent_saturation_leads ?? []).map((lead) => (
+                      <tr key={lead.id} className="hover:bg-[#0D1120]">
+                        <td className="px-4 py-2 text-xs font-mono text-[#CBD5E1] whitespace-nowrap">
+                          {lead.email}
+                        </td>
+                        <td
+                          className="px-4 py-2 text-xs font-mono text-[#94A3B8] max-w-[220px] truncate"
+                          title={lead.idea}
+                        >
+                          {lead.idea}
+                        </td>
+                        <td className="px-4 py-2 text-xs font-mono text-[#F8FAFC] text-center tabular-nums">
+                          {lead.score ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <span
+                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${decisionBadge(lead.decision)}`}
+                          >
+                            {decisionLabel(lead.decision)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-[10px] font-mono text-[#475569] text-center">
+                          {lead.data_mode ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 text-xs font-mono text-[#475569] whitespace-nowrap">
+                          {timeAgo(lead.created_at)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
         </Section>
 
         {/* Daily trend */}
@@ -700,9 +843,10 @@ export default function AdminPage() {
 
         {/* Tier breakdown */}
         <Section title="Scan tiers">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard label="Free tier" value={stats.tier_breakdown.free ?? 0} />
             <StatCard label="Full tier" value={stats.tier_breakdown.full ?? 0} />
+            <StatCard label="Saturation (all time)" value={stats.saturation_total ?? 0} sub="email-gated scores" />
             <StatCard label="Waitlist" value={stats.waitlist_total} sub="pre-signup emails" />
           </div>
         </Section>

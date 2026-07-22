@@ -146,6 +146,16 @@ class PurchaseRow(BaseModel):
     created_at: datetime
 
 
+class SaturationLeadRow(BaseModel):
+    id: int
+    email: str
+    idea: str
+    score: int | None
+    decision: str | None
+    data_mode: str | None
+    created_at: datetime
+
+
 class TechCheck(BaseModel):
     name: str
     ok: bool
@@ -202,6 +212,17 @@ class AdminStats(BaseModel):
     waitlist_sources: list[SourceCount]
     top_urls: list[UrlCount]
     tier_breakdown: dict[str, int]
+
+    # Saturation Score leads (email-gated pre-launch tool)
+    saturation_total: int = 0
+    saturation_today: int = 0
+    saturation_this_week: int = 0
+    saturation_in_period: int = 0
+    saturation_unique_emails: int = 0
+    saturation_avg_score: float = 0.0
+    saturation_by_decision: list[NamedCount] = []
+    saturation_top_ideas: list[NamedCount] = []
+    recent_saturation_leads: list[SaturationLeadRow] = []
 
     # Filtered-period metrics
     filtered_scans: int
@@ -611,6 +632,12 @@ def admin_stats(
     scan_type: str | None = Query(default=None),
 ) -> AdminStats:
     _ensure_scan_log(engine)
+    try:
+        from app.saturation.leads import ensure_saturation_leads_table
+
+        ensure_saturation_leads_table(engine)
+    except Exception:
+        pass
 
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -845,6 +872,132 @@ def admin_stats(
                 GROUP BY source ORDER BY cnt DESC LIMIT 10
             """), wl_params).fetchall()
             waitlist_sources = [SourceCount(source=r[0], count=r[1]) for r in wl_rows]
+        except Exception:
+            _recover(conn)
+
+        # ── Saturation leads ───────────────────────────────────────────────
+        saturation_total = 0
+        saturation_today = 0
+        saturation_this_week = 0
+        saturation_in_period = 0
+        saturation_unique_emails = 0
+        saturation_avg_score = 0.0
+        saturation_by_decision: list[NamedCount] = []
+        saturation_top_ideas: list[NamedCount] = []
+        recent_saturation_leads: list[SaturationLeadRow] = []
+        try:
+            sat_email_sql, sat_email_params = _sql_not_in(
+                "LOWER(email)", excl_emails, "sat_email",
+            )
+            sat_owner = sat_email_sql if excl_emails else "TRUE"
+
+            saturation_total = _safe_scalar(
+                conn,
+                f"SELECT COUNT(*) FROM saturation_leads WHERE {sat_owner}",
+                sat_email_params,
+            )
+            sat_today_params = {**sat_email_params, "sat_today": today_start}
+            saturation_today = _safe_scalar(
+                conn,
+                f"SELECT COUNT(*) FROM saturation_leads WHERE {sat_owner} AND created_at >= :sat_today",
+                sat_today_params,
+            )
+            sat_week_params = {**sat_email_params, "sat_week": week_start}
+            saturation_this_week = _safe_scalar(
+                conn,
+                f"SELECT COUNT(*) FROM saturation_leads WHERE {sat_owner} AND created_at >= :sat_week",
+                sat_week_params,
+            )
+
+            sat_period_clauses = [sat_owner]
+            sat_period_params: dict[str, Any] = {**sat_email_params}
+            if start is not None:
+                sat_period_clauses.append("created_at >= :sat_start")
+                sat_period_params["sat_start"] = start
+            if end is not None:
+                sat_period_clauses.append("created_at <= :sat_end")
+                sat_period_params["sat_end"] = end
+            sat_period_where = " AND ".join(sat_period_clauses)
+
+            saturation_in_period = _safe_scalar(
+                conn,
+                f"SELECT COUNT(*) FROM saturation_leads WHERE {sat_period_where}",
+                sat_period_params,
+            )
+            saturation_unique_emails = _safe_scalar(
+                conn,
+                f"SELECT COUNT(DISTINCT LOWER(email)) FROM saturation_leads WHERE {sat_period_where}",
+                sat_period_params,
+            )
+            avg_row = conn.execute(
+                text(
+                    f"""
+                    SELECT COALESCE(AVG(score), 0)
+                    FROM saturation_leads
+                    WHERE {sat_period_where} AND score IS NOT NULL
+                    """
+                ),
+                sat_period_params,
+            ).fetchone()
+            saturation_avg_score = round(float(avg_row[0]), 1) if avg_row else 0.0
+
+            dec_rows = conn.execute(
+                text(
+                    f"""
+                    SELECT COALESCE(NULLIF(decision, ''), 'unknown') AS d, COUNT(*) AS cnt
+                    FROM saturation_leads
+                    WHERE {sat_period_where}
+                    GROUP BY 1
+                    ORDER BY cnt DESC
+                    """
+                ),
+                sat_period_params,
+            ).fetchall()
+            saturation_by_decision = [
+                NamedCount(name=str(r[0]), count=int(r[1])) for r in dec_rows
+            ]
+
+            idea_rows = conn.execute(
+                text(
+                    f"""
+                    SELECT idea, COUNT(*) AS cnt
+                    FROM saturation_leads
+                    WHERE {sat_period_where}
+                    GROUP BY idea
+                    ORDER BY cnt DESC
+                    LIMIT 15
+                    """
+                ),
+                sat_period_params,
+            ).fetchall()
+            saturation_top_ideas = [
+                NamedCount(name=str(r[0])[:120], count=int(r[1])) for r in idea_rows
+            ]
+
+            lead_rows = conn.execute(
+                text(
+                    f"""
+                    SELECT id, email, idea, score, decision, data_mode, created_at
+                    FROM saturation_leads
+                    WHERE {sat_period_where}
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                    """
+                ),
+                sat_period_params,
+            ).fetchall()
+            recent_saturation_leads = [
+                SaturationLeadRow(
+                    id=int(r[0]),
+                    email=str(r[1] or ""),
+                    idea=str(r[2] or "")[:200],
+                    score=int(r[3]) if r[3] is not None else None,
+                    decision=str(r[4]) if r[4] else None,
+                    data_mode=str(r[5]) if r[5] else None,
+                    created_at=r[6],
+                )
+                for r in lead_rows
+            ]
         except Exception:
             _recover(conn)
 
@@ -1197,6 +1350,15 @@ def admin_stats(
         waitlist_sources=waitlist_sources,
         top_urls=top_urls,
         tier_breakdown=tier_breakdown,
+        saturation_total=saturation_total,
+        saturation_today=saturation_today,
+        saturation_this_week=saturation_this_week,
+        saturation_in_period=saturation_in_period,
+        saturation_unique_emails=saturation_unique_emails,
+        saturation_avg_score=saturation_avg_score,
+        saturation_by_decision=saturation_by_decision,
+        saturation_top_ideas=saturation_top_ideas,
+        recent_saturation_leads=recent_saturation_leads,
         filtered_scans=filtered_scans,
         filtered_unique_ips=filtered_unique_ips,
         filtered_signups=filtered_signups,
