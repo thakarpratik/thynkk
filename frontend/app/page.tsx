@@ -32,7 +32,7 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center">
           <LiveActivity />
           <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">
-            Find demand · Or decide if the niche is worth it
+            Don&apos;t build blind. Don&apos;t launch quiet.
           </p>
           <h1 className="font-mono text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight">
             Your first visitors
