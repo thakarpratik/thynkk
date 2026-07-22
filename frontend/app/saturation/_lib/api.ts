@@ -54,12 +54,17 @@ export async function validateSaturationInput(
 
 export async function scoreSaturation(
   input: string,
+  email: string,
   confirmBroadTheme = false
 ): Promise<SaturationReport> {
   const res = await fetch(`${BASE}/saturation/score`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ input, confirm_broad_theme: confirmBroadTheme }),
+    body: JSON.stringify({
+      input,
+      email,
+      confirm_broad_theme: confirmBroadTheme,
+    }),
   });
   if (!res.ok) throw await parseError(res);
   return res.json();

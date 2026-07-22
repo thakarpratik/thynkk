@@ -33,9 +33,10 @@ export default function SaturationPage() {
             <span className="text-gradient">Saturation Score</span>
           </h1>
           <p className="text-[#94A3B8] text-base leading-relaxed mb-8">
-            Thinking of a niche — or stuck between ideas? Get a 0–100 score and a clear{" "}
-            <span className="text-[#F8FAFC]">Go / Caution / No-go</span> before you build
-            for months. Not for live sites — use{" "}
+            Thinking of a niche — or stuck between ideas? Enter your idea, unlock with
+            email (no account), and get a 0–100 score with a clear{" "}
+            <span className="text-[#F8FAFC]">Go / Caution / No-go</span> in about 15
+            seconds. Not for live sites — use{" "}
             <Link href="/#explore-reddit" className="text-[#818CF8] hover:underline">
               Find Reddit threads
             </Link>{" "}

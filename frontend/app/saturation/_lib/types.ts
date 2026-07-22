@@ -46,4 +46,11 @@ export interface SaturationReport {
   weights: Record<string, number>;
 }
 
-export type PageStatus = "idle" | "validating" | "confirm" | "scoring" | "done" | "error";
+export type PageStatus =
+  | "idle"
+  | "validating"
+  | "confirm"
+  | "email"
+  | "scoring"
+  | "done"
+  | "error";

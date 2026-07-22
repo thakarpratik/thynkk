@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+import re
+import time
 
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field, field_validator
+
+from app.api.email_guard import check_email_domain
+from app.saturation.leads import record_saturation_lead
 from app.saturation.score import compute_saturation_report
 from app.saturation.validate import validate_saturation_input
 
 router = APIRouter(prefix="/saturation", tags=["saturation"])
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+# Soft floor so raw API users cannot skip the intentional “research” feel.
+# Client also enforces ~15s staged UI; this is a light server-side pad.
+_MIN_SCORE_SECONDS = 8.0
 
 
 class ValidateRequest(BaseModel):
@@ -29,7 +40,16 @@ class ValidateResponse(BaseModel):
 
 class ScoreRequest(BaseModel):
     input: str = Field(..., min_length=1, max_length=200)
+    email: str = Field(..., min_length=5, max_length=254)
     confirm_broad_theme: bool = False
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        email = (v or "").strip().lower()
+        if not _EMAIL_RE.match(email):
+            raise ValueError("Enter a valid email address.")
+        return email
 
 
 class FactorOut(BaseModel):
@@ -59,6 +79,12 @@ class ScoreResponse(BaseModel):
     weights: dict
 
 
+def _get_engine():
+    from app.main import db_engine
+
+    return db_engine
+
+
 @router.post("/validate", response_model=ValidateResponse)
 def validate_idea(body: ValidateRequest) -> ValidateResponse:
     result = validate_saturation_input(
@@ -70,6 +96,22 @@ def validate_idea(body: ValidateRequest) -> ValidateResponse:
 
 @router.post("/score", response_model=ScoreResponse)
 def score_idea(body: ScoreRequest) -> ScoreResponse:
+    started = time.monotonic()
+
+    # Block disposable / +alias abuse the same way as waitlist
+    try:
+        check_email_domain(body.email)
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={
+                "message": detail.get("message")
+                or "Please use a real email address.",
+                "code": detail.get("error") or "email_blocked",
+            },
+        ) from exc
+
     validation = validate_saturation_input(
         body.input,
         confirm_broad_theme=body.confirm_broad_theme,
@@ -118,4 +160,24 @@ def score_idea(body: ScoreRequest) -> ScoreResponse:
             detail={"message": f"Scoring failed: {str(exc)[:180]}"},
         ) from exc
 
-    return ScoreResponse(**report.to_dict())
+    payload = report.to_dict()
+
+    # Best-effort lead capture
+    try:
+        record_saturation_lead(
+            _get_engine(),
+            email=body.email,
+            idea=payload.get("normalized_input") or body.input,
+            score=payload.get("score"),
+            decision=payload.get("decision"),
+            data_mode=payload.get("data_mode"),
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Soft minimum duration (worker held briefly on purpose for product feel)
+    elapsed = time.monotonic() - started
+    if elapsed < _MIN_SCORE_SECONDS:
+        time.sleep(_MIN_SCORE_SECONDS - elapsed)
+
+    return ScoreResponse(**payload)

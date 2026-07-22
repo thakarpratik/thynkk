@@ -76,8 +76,8 @@ export function SaturationForm({
 
       {!error && (
         <p className="text-xs text-[#64748B] mt-3 leading-relaxed">
-          Be specific: who it&apos;s for + what problem. Vague words like &quot;game&quot; or whole
-          industries like &quot;furniture&quot; are rejected.
+          Be specific: who it&apos;s for + what problem. Free with email · ~15s research ·
+          vague words like &quot;game&quot; or industries like &quot;furniture&quot; are rejected.
         </p>
       )}
     </div>

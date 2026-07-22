@@ -36,7 +36,7 @@ export function HeroSaturationInput() {
         </button>
       </div>
       <p className="text-xs text-[#64748B] mt-3 leading-relaxed text-left">
-        Free · Go / Caution / No-go · Vague inputs like “game” or “furniture” are rejected
+        Free with email · ~15s deep check · Vague inputs like “game” or “furniture” are rejected
       </p>
     </form>
   );
