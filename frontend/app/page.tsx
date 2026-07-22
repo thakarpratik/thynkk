@@ -32,12 +32,12 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center">
           <LiveActivity />
           <p className="text-xs font-mono text-[#6366F1] uppercase tracking-widest mb-4">
-            Don&apos;t build blind. Don&apos;t launch quiet.
+            Reddit traffic · Niche saturation
           </p>
           <h1 className="font-mono text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Your first visitors
+            Don&apos;t build blind.
             <br />
-            <span className="text-gradient">won&apos;t come from Google.</span>
+            <span className="text-gradient">Don&apos;t launch quiet.</span>
           </h1>
           <p className="text-xl text-[#94A3B8] max-w-2xl mx-auto mb-4 leading-relaxed">
             Already shipped? Find niche Reddit threads. Still choosing? Calculate a
